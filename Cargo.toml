@@ -1,0 +1,23 @@
+[package]
+name = "sudoku"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+rand = { version = "0.8", optional = true }
+
+[features]
+default = ["solver", "generator"]
+solver = []
+solver-bin = ["solver"]
+generator = ["solver", "rand"]
+generator-bin = ["generator"]
+all = ["solver-bin", "generator-bin"]
+
+[[bin]]
+name = "solver"
+required-features = ["solver-bin"]
+
+[[bin]]
+name = "generator"
+required-features = ["generator-bin"]

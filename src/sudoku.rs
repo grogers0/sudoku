@@ -88,7 +88,7 @@ impl Sudoku {
         }
         self.candidates_by_value[(value.get() - 1) as usize] &= !neighbor_bitset(pos);
 
-        self.check_consistency();
+        //self.check_consistency();
     }
 
     pub fn remove_candidate(&mut self, pos: Pos, value: NonZeroU8) {
@@ -98,7 +98,7 @@ impl Sudoku {
         self.candidates_by_pos[pos.idx()].clear((value.get() - 1) as usize);
         self.candidates_by_value[(value.get() - 1) as usize].clear(pos.idx());
 
-        self.check_consistency();
+        //self.check_consistency();
     }
 
     /// Parses a sudoku of the form:

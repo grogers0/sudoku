@@ -1,8 +1,10 @@
-use crate::technique::TechniqueResult;
+use crate::{
+    solver::strategy::StrategyResult,
+    Pos, Sudoku,
+};
 use std::num::NonZeroU8;
-use sudoku_board::{Pos, Sudoku};
 
-pub(crate) fn naked_single(sudoku: &Sudoku) -> TechniqueResult {
+pub(crate) fn naked_single(sudoku: &Sudoku) -> StrategyResult {
     let mut ret = Vec::new();
     for pos in Pos::iter() {
         let candidates = sudoku.get_candidates_by_pos(pos);
@@ -11,7 +13,7 @@ pub(crate) fn naked_single(sudoku: &Sudoku) -> TechniqueResult {
             ret.push((pos, value));
         }
     }
-    TechniqueResult {
+    StrategyResult {
         false_candidates: Vec::new(),
         true_candidates: ret
     }
