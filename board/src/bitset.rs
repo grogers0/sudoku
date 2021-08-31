@@ -1,10 +1,10 @@
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not};
 
 #[derive(Copy, Clone, PartialEq, Eq)]
-pub struct BitSet9(pub(crate) u16);
+pub struct BitSet9(u16);
 
 #[derive(Copy, Clone, PartialEq, Eq)]
-pub struct BitSet81(pub(crate) u128);
+pub struct BitSet81(u128);
 
 impl BitSet9 {
     const BITS: usize = 9;
@@ -41,7 +41,33 @@ impl BitSet9 {
     #[inline]
     pub fn get(self, idx: usize) -> bool {
         if idx >= Self::BITS { panic!("Index out of bounds") }
-        (self.0 & (1 << idx)) == 0
+        (self.0 & (1 << idx)) != 0
+    }
+
+    #[inline]
+    pub const fn union(self, other: Self) -> Self {
+        Self(self.0 | other.0)
+    }
+
+    #[inline]
+    pub const fn intersect(self, other: Self) -> Self {
+        Self(self.0 & other.0)
+    }
+
+    #[inline]
+    pub const fn inversed(self) -> Self {
+        Self(!self.0 & Self::ALL.0)
+    }
+
+    #[inline]
+    pub const fn count_ones(&self) -> usize {
+        self.0.count_ones() as usize
+    }
+
+    // Iterate over the positions of the bits that are set
+    #[inline]
+    pub fn iter(&self) -> impl Iterator<Item=usize> {
+        BitSet9Iter::new(*self)
     }
 }
 
@@ -50,14 +76,14 @@ impl BitAnd for BitSet9 {
     type Output = Self;
     #[inline]
     fn bitand(self, other: Self) -> Self {
-        Self(self.0 & other.0)
+        self.intersect(other)
     }
 }
 
 impl BitAndAssign for BitSet9 {
     #[inline]
     fn bitand_assign(&mut self, other: Self) {
-        self.0 &= other.0;
+        *self = self.intersect(other);
     }
 }
 
@@ -65,14 +91,14 @@ impl BitOr for BitSet9 {
     type Output = Self;
     #[inline]
     fn bitor(self, other: Self) -> Self {
-        Self(self.0 | other.0)
+        self.union(other)
     }
 }
 
 impl BitOrAssign for BitSet9 {
     #[inline]
     fn bitor_assign(&mut self, other: Self) {
-        self.0 |= other.0;
+        *self = self.union(other);
     }
 }
 
@@ -95,10 +121,36 @@ impl Not for BitSet9 {
     type Output = Self;
     #[inline]
     fn not(self) -> Self {
-        Self(!self.0 & Self::ALL.0)
+        self.inversed()
     }
 }
 
+pub struct BitSet9Iter {
+    bits: u16,
+    offset: usize
+}
+
+impl BitSet9Iter {
+    #[inline]
+    fn new(bitset: BitSet9) -> Self {
+        Self { bits: bitset.0, offset: 0 }
+    }
+}
+
+impl Iterator for BitSet9Iter {
+    type Item = usize;
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        let trailing_zeros = self.bits.trailing_zeros() as usize;
+        if self.offset + trailing_zeros >= 9 {
+            return None
+        }
+        let ret = Some(self.offset + trailing_zeros);
+        self.offset += trailing_zeros + 1;
+        self.bits >>= trailing_zeros + 1;
+        ret
+    }
+}
 
 impl BitSet81 {
     const BITS: usize = 81;
@@ -135,7 +187,34 @@ impl BitSet81 {
     #[inline]
     pub fn get(self, idx: usize) -> bool {
         if idx >= Self::BITS { panic!("Index out of bounds") }
-        (self.0 & (1 << idx)) == 0
+        (self.0 & (1 << idx)) != 0
+    }
+
+    #[inline]
+    pub const fn union(self, other: Self) -> Self {
+        Self(self.0 | other.0)
+    }
+
+    #[inline]
+    pub const fn intersect(self, other: Self) -> Self {
+        Self(self.0 & other.0)
+    }
+
+    #[inline]
+    pub const fn inversed(self) -> Self {
+        Self(!self.0 & Self::ALL.0)
+    }
+
+    #[allow(dead_code)]
+    #[inline]
+    pub const fn count_ones(&self) -> usize {
+        self.0.count_ones() as usize
+    }
+    // Iterate over the positions of the bits that are set
+    #[allow(dead_code)]
+    #[inline]
+    pub fn iter(&self) -> impl Iterator<Item=usize> {
+        BitSet81Iter::new(*self)
     }
 }
 
@@ -144,14 +223,14 @@ impl BitAnd for BitSet81 {
     type Output = Self;
     #[inline]
     fn bitand(self, other: Self) -> Self {
-        Self(self.0 & other.0)
+        self.intersect(other)
     }
 }
 
 impl BitAndAssign for BitSet81 {
     #[inline]
     fn bitand_assign(&mut self, other: Self) {
-        self.0 &= other.0;
+        *self = self.intersect(other);
     }
 }
 
@@ -159,14 +238,14 @@ impl BitOr for BitSet81 {
     type Output = Self;
     #[inline]
     fn bitor(self, other: Self) -> Self {
-        Self(self.0 | other.0)
+        self.union(other)
     }
 }
 
 impl BitOrAssign for BitSet81 {
     #[inline]
     fn bitor_assign(&mut self, other: Self) {
-        self.0 |= other.0;
+        *self = self.union(other);
     }
 }
 
@@ -189,62 +268,33 @@ impl Not for BitSet81 {
     type Output = Self;
     #[inline]
     fn not(self) -> Self {
-        Self(!self.0 & Self::ALL.0)
+        self.inversed()
     }
 }
 
-
-
-/*
-
-
-type BitSet9 = BitSet<u16, 9>;
-type BitSet81 = BitSet<u128, 81>;
-
-struct BitSet<Storage: BitSetStorage<NBITS>, const NBITS: usize>(Storage);
-
-impl <Storage: BitSetStorage<NBITS>, const NBITS: usize> BitSet<Storage, NBITS> {
-    const ZERO: Self = Self::new(Storage::ZERO);
-
-    const fn new(storage: Storage) -> Self { Self(storage) }
-    pub fn count_ones(&self) -> usize { self.0._count_ones() }
+pub struct BitSet81Iter {
+    bits: u128,
+    offset: usize
 }
 
-trait BitSetStorage<const NBITS: usize> :
-    BitAnd + BitAndAssign +
-    BitOr + BitOrAssign +
-    BitXor + BitXorAssign +
-    Not +
-    Sized +
-    Copy +
-    PartialEq +
-    Sub<Self, Output=Self> +
-    Shl<usize, Output=Self>
-{
-    const BITS: usize;
-    const ZERO: Self;
-    const ONE: Self;
-    fn _count_ones(self) -> usize;
+impl BitSet81Iter {
+    #[inline]
+    fn new(bitset: BitSet81) -> Self {
+        Self { bits: bitset.0, offset: 0 }
+    }
 }
 
-impl <const NBITS: usize> BitSetStorage<NBITS> for u16 {
-    const BITS: usize = Self::BITS as usize;
-    const ZERO: Self = 0;
-    const ONE: Self = 1;
-    fn _count_ones(self) -> usize { self.count_ones() as usize }
+impl Iterator for BitSet81Iter {
+    type Item = usize;
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        let trailing_zeros = self.bits.trailing_zeros() as usize;
+        if self.offset + trailing_zeros >= 81 {
+            return None
+        }
+        let ret = Some(self.offset + trailing_zeros);
+        self.offset += trailing_zeros + 1;
+        self.bits >>= trailing_zeros + 1;
+        ret
+    }
 }
-
-impl <const NBITS: usize> BitSetStorage<NBITS> for u32 {
-    const BITS: usize = Self::BITS as usize;
-    const ZERO: Self = 0;
-    const ONE: Self = 1;
-    fn _count_ones(self) -> usize { self.count_ones() as usize }
-}
-
-impl <const NBITS: usize> BitSetStorage<NBITS> for u128 {
-    const BITS: usize = Self::BITS as usize;
-    const ZERO: Self = 0;
-    const ONE: Self = 1;
-    fn _count_ones(self) -> usize { self.count_ones() as usize }
-}
-*/

@@ -53,8 +53,7 @@ const fn calc_neighbor_bitsets() -> [BitSet81; 81] {
         let neighbor_positions = &NEIGHBOR_POSITIONS[pos_raw];
         let mut idx = 0;
         while idx < neighbor_positions.len() {
-            // Rustc doesn't allow const trait fns, see https://github.com/rust-lang/rust/issues/67792
-            ret[pos_raw] = BitSet81(ret[pos_raw].0 | unsafe { BitSet81::single_unchecked(neighbor_positions[idx].idx()).0 });
+            ret[pos_raw] = ret[pos_raw].union(unsafe { BitSet81::single_unchecked(neighbor_positions[idx].idx()) });
             idx += 1;
         }
         pos_raw += 1;

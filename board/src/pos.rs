@@ -11,6 +11,7 @@ impl Pos {
         Self(idx as u8)
     }
 
+    #[inline]
     pub const unsafe fn new_unchecked(idx: usize) -> Self {
         Self(idx as u8)
     }
@@ -51,22 +52,22 @@ impl Pos {
 
     #[inline]
     pub fn iter() -> Iter {
-        Iter(Self::MIN)
+        Iter(Pos::MIN.0)
     }
 }
 
-pub struct Iter(Pos);
+pub struct Iter(u8);
 
 impl Iterator for Iter {
     type Item = Pos;
     #[inline]
     fn next(&mut self) -> Option<Pos> {
-        if self.0 == Pos::MAX {
+        if self.0 > Pos::MAX.0 {
             None
         } else {
-            let tmp = self.0;
-            self.0.0 += 1;
-            Some(tmp)
+            let ret = Some(Pos(self.0));
+            self.0 += 1;
+            ret
         }
     }
 }
