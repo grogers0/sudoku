@@ -1,17 +1,17 @@
 use crate::{
     bitset::{BitSet9, BitSet81},
     pos::Pos,
+    value::{Value, MaybeValue},
     neighbors::{neighbor_positions, neighbor_bitset},
 };
 use std::{
     cmp::max,
     fmt,
-    num::NonZeroU8,
 };
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Sudoku {
-    values: [Option<NonZeroU8>; 81],
+    values: [MaybeValue; 81],
     candidates_by_pos: [BitSet9; 81],
     candidates_by_value: [BitSet81; 9]
 }
@@ -26,15 +26,15 @@ pub enum SudokuParseError {
 impl Sudoku {
     pub fn new() -> Self {
         Self {
-            values: [None; 81],
+            values: [MaybeValue::NONE; 81],
             candidates_by_pos: [BitSet9::ALL; 81],
             candidates_by_value: [BitSet81::ALL; 9]
         }
     }
 
     #[inline]
-    pub fn get_value(&self, pos: Pos) -> Option<NonZeroU8> {
-        self.values[pos.idx()]
+    pub fn get_value(&self, pos: Pos) -> Option<Value> {
+        self.values[pos.idx()].to_option()
     }
 
     #[inline]
@@ -43,15 +43,14 @@ impl Sudoku {
     }
 
     #[inline]
-    pub fn get_candidates_by_value(&self, value: NonZeroU8) -> BitSet81 {
-        self.candidates_by_value[value.get() as usize - 1]
+    pub fn get_candidates_by_value(&self, val: Value) -> BitSet81 {
+        self.candidates_by_value[val.idx()]
     }
 
-    #[inline]
     pub fn progress_possible(&self) -> bool {
         let mut candidates = BitSet81::NONE;
-        for value_idx in 0..9 {
-            candidates |= self.candidates_by_value[value_idx];
+        for val in Value::iter() {
+            candidates |= self.get_candidates_by_value(val);
         }
         candidates != BitSet81::NONE
     }
@@ -62,9 +61,9 @@ impl Sudoku {
         }
 
         for pos in Pos::iter() {
-            let val = self.values[pos.idx()];
+            let val = self.get_value(pos);
             for pos2 in neighbor_positions(pos) {
-                if val == self.values[pos2.idx()] {
+                if val == self.get_value(*pos2) {
                     return false
                 }
             }
@@ -72,33 +71,27 @@ impl Sudoku {
         true
     }
 
-    pub fn set_value(&mut self, pos: Pos, value: NonZeroU8) {
-        if value.get() > 9 { panic!("Value out of bounds") }
-        if self.values[pos.idx()].is_some() { panic!("Cell already has value present") }
+    pub fn set_value(&mut self, pos: Pos, val: Value) {
+        if self.get_value(pos).is_some() { panic!("Cell already has value present") }
 
-        self.values[pos.idx()] = Some(value);
+        self.values[pos.idx()] = MaybeValue::from_option(Some(val));
 
         self.candidates_by_pos[pos.idx()] = BitSet9::NONE;
-        for val2_idx in 0..9 {
-            self.candidates_by_value[val2_idx].clear(pos.idx());
+        for val2 in Value::iter() {
+            self.candidates_by_value[val2.idx()].clear(pos.idx());
         }
 
         for pos2 in neighbor_positions(pos) {
-            self.candidates_by_pos[pos2.idx()].clear((value.get() - 1) as usize);
+            self.candidates_by_pos[pos2.idx()].clear(val.idx());
         }
-        self.candidates_by_value[(value.get() - 1) as usize] &= !neighbor_bitset(pos);
-
-        //self.check_consistency();
+        self.candidates_by_value[val.idx()] &= !neighbor_bitset(pos);
     }
 
-    pub fn remove_candidate(&mut self, pos: Pos, value: NonZeroU8) {
-        if value.get() > 9 { panic!("Value out of bounds") }
-        if self.candidates_by_pos[pos.idx()].get((value.get() - 1) as usize) { panic!("Cell doesn't contain this candidate") }
+    pub fn remove_candidate(&mut self, pos: Pos, val: Value) {
+        if self.get_candidates_by_pos(pos).get(val.idx()) { panic!("Cell doesn't contain this candidate") }
 
-        self.candidates_by_pos[pos.idx()].clear((value.get() - 1) as usize);
-        self.candidates_by_value[(value.get() - 1) as usize].clear(pos.idx());
-
-        //self.check_consistency();
+        self.candidates_by_pos[pos.idx()].clear(val.idx());
+        self.candidates_by_value[val.idx()].clear(pos.idx());
     }
 
     /// Parses a sudoku of the form:
@@ -133,7 +126,7 @@ impl Sudoku {
             if got_enough { return Err(SudokuParseError::TooMuchInput) }
             match ch {
                 '.' | '_' | '0' => (),
-                '1' ..= '9' => sudoku.set_value(Pos::new(i), NonZeroU8::new(ch.to_digit(10).unwrap() as u8).unwrap()),
+                '1' ..= '9' => sudoku.set_value(Pos::new(i), Value::from_char(ch).unwrap()),
                 _ => return Err(SudokuParseError::InvalidChar(ch))
             }
             if i == 80 { got_enough = true }
@@ -145,9 +138,9 @@ impl Sudoku {
     /// Outputs a sudoku in line format (see [`Sudoku::from_line`]).
     pub fn to_line(&self) -> String {
         let mut line = String::with_capacity(81);
-        for value in self.values {
-            match value {
-                Some(v) => line.push(char::from_digit(v.get() as u32, 10).unwrap()),
+        for maybe_value in self.values {
+            match maybe_value.to_option() {
+                Some(v) => line.push(v.to_char()),
                 None => line.push('.')
             }
         }
@@ -174,7 +167,7 @@ impl Sudoku {
             has_whitespace: bool,
             pos_iter: PosIter,
             candidates: BitSet9,
-            values_to_set: Vec<(Pos, NonZeroU8)>
+            values_to_set: Vec<(Pos, Value)>
         }
         let mut state = ParseState {
             has_whitespace: false,
@@ -183,7 +176,7 @@ impl Sudoku {
             values_to_set: Vec::new()
         };
         let mut sudoku = Sudoku {
-            values: [None; 81],
+            values: [MaybeValue::NONE; 81],
             candidates_by_pos: [BitSet9::NONE; 81],
             candidates_by_value: [BitSet81::NONE; 9]
         };
@@ -196,7 +189,7 @@ impl Sudoku {
             };
             if state.candidates.count_ones() == 1 {
                 state.values_to_set.push((pos,
-                        NonZeroU8::new(state.candidates.iter().next().unwrap() as u8 + 1).unwrap()));
+                        Value::new(state.candidates.iter().next().unwrap())));
             } else {
                 for value_idx in state.candidates.iter() {
                     sudoku.candidates_by_value[value_idx].set(pos.idx());
@@ -241,18 +234,18 @@ impl Sudoku {
         for pos in Pos::iter() {
             widths[pos.col() as usize] = max(
                 widths[pos.col() as usize],
-                self.candidates_by_pos[pos.idx()].count_ones());
+                self.get_candidates_by_pos(pos).count_ones());
         }
 
         let mut s = String::new();
         for pos in Pos::iter() {
             let mut written_chars = 0;
-            if let Some(value) = self.values[pos.idx()] {
-                s.push(char::from_digit(value.get() as u32, 10).unwrap());
+            if let Some(value) = self.get_value(pos) {
+                s.push(value.to_char());
                 written_chars = 1;
             } else {
-                for value_idx in self.candidates_by_pos[pos.idx()].iter() {
-                    s.push(char::from_digit((value_idx + 1) as u32, 10).unwrap());
+                for value_idx in self.get_candidates_by_pos(pos).iter() {
+                    s.push(Value::new(value_idx).to_char());
                     written_chars += 1;
                 }
             }
@@ -287,14 +280,14 @@ impl Sudoku {
     #[cfg(debug_assertions)]
     fn check_consistency(&self) {
         for pos in Pos::iter() {
-            if let Some(_) = self.values[pos.idx()] {
-                if self.candidates_by_pos[pos.idx()] != BitSet9::NONE {
+            if let Some(_) = self.get_value(pos) {
+                if self.get_candidates_by_pos(pos) != BitSet9::NONE {
                     panic!("Cell with value set but has candidates");
                 }
             }
 
-            for val_idx in 0..9 {
-                if self.candidates_by_pos[pos.idx()].get(val_idx) != self.candidates_by_value[val_idx].get(pos.idx()) {
+            for val in Value::iter() {
+                if self.get_candidates_by_pos(pos).get(val.idx()) != self.get_candidates_by_value(val).get(pos.idx()) {
                     panic!("Candidates by pos don't match candidates by value");
                 }
             }

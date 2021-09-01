@@ -1,8 +1,7 @@
 use crate::{
     solver::{solve, SolveOpts, SolveResult},
-    Pos, Sudoku
+    Pos, Sudoku, Value
 };
-use std::num::NonZeroU8;
 use rand::{
     seq::SliceRandom,
     thread_rng, RngCore,
@@ -26,7 +25,7 @@ impl Default for GenerateOpts<'_> {
 
 fn fill_initial_chunk(sudoku: &mut Sudoku, rng: &mut dyn RngCore, positions: &[Pos]) {
     let mut candidates: Vec<_> = sudoku.get_candidates_by_pos(positions[0]).iter()
-        .map(|val_idx| NonZeroU8::new(val_idx as u8 + 1).unwrap())
+        .map(|val_idx| Value::new(val_idx))
         .collect();
     assert!(candidates.len() >= positions.len());
     candidates.partial_shuffle(rng, positions.len());
@@ -79,7 +78,7 @@ fn random_guess_and_check_to_fill(sudoku: Sudoku, rng: &mut dyn RngCore) -> Opti
         .min_by_key(|&pos| sudoku.get_candidates_by_pos(pos).count_ones())
         .unwrap();
     let mut candidates: Vec<_> = sudoku.get_candidates_by_pos(pos).iter()
-        .map(|value_idx| NonZeroU8::new(value_idx as u8 + 1).unwrap())
+        .map(|value_idx| Value::new(value_idx))
         .collect();
     candidates.shuffle(rng);
     for value in candidates {

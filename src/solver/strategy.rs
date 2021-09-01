@@ -1,5 +1,4 @@
-use crate::Pos;
-use std::num::NonZeroU8;
+use crate::{Pos, Value};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Strategy {
@@ -9,9 +8,9 @@ pub enum Strategy {
 // TODO - return a description of how we decided on the result?
 pub(crate) struct StrategyResult {
     /// Any candidates that are found to be false
-    pub false_candidates: Vec<(Pos, NonZeroU8)>,
+    pub false_candidates: Vec<(Pos, Value)>,
     /// Any candidates that are found to be true
-    pub true_candidates: Vec<(Pos, NonZeroU8)>
+    pub true_candidates: Vec<(Pos, Value)>
 }
 
 impl StrategyResult {
