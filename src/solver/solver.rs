@@ -1,37 +1,41 @@
 use crate::{
     solver::{
         strategy::{Strategy, StrategyResult},
-        strategies,
+        strategies::{
+            self,
+            naked_single::naked_single,
+            guess_and_check::guess_and_check,
+        },
     },
     Sudoku,
 };
 
-pub struct SolveOpts {
+pub struct SolveOpts<'a> {
     /// Strategies to try when solving, in order
-    pub strategies: Vec<Strategy>,
+    pub strategies: &'a [Strategy],
     /// If sudoku is unsolvable with given strategies, should we guess and check to solve it
     pub guess_and_check: bool
 }
 
-impl Default for SolveOpts {
+impl Default for SolveOpts<'_> {
     fn default() -> Self {
         Self {
-            strategies: strategies::ALL.iter().cloned().collect::<Vec<Strategy>>(),
+            strategies: &strategies::ALL,
             guess_and_check: true
         }
     }
 }
 
-impl SolveOpts {
+impl SolveOpts<'_> {
     pub fn fast() -> Self {
         Self {
-            strategies: strategies::FAST.iter().cloned().collect::<Vec<Strategy>>(),
+            strategies: &strategies::ALL,
             guess_and_check: true
         }
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SolveResult {
     Unsolvable(Sudoku), // The sudoku as far as we were able to solve it
     Unique(Sudoku),
@@ -67,9 +71,9 @@ impl SolveResult {
 }
 
 fn run_strategies(sudoku: &Sudoku, opts: &SolveOpts) -> StrategyResult {
-    for strat in &opts.strategies {
+    for strat in opts.strategies {
         let res = match strat {
-            Strategy::NakedSingle => strategies::naked_single(&sudoku)
+            Strategy::NakedSingle => naked_single(&sudoku)
         };
         if res.has_changes() { return res }
     }
@@ -92,7 +96,7 @@ pub fn solve(mut sudoku: Sudoku, opts: &SolveOpts) -> SolveResult {
         return SolveResult::Unique(sudoku)
     }
     if opts.guess_and_check && sudoku.progress_possible() {
-        return strategies::guess_and_check(&sudoku);
+        return guess_and_check(&sudoku);
     }
     SolveResult::Unsolvable(sudoku)
 }
@@ -106,21 +110,7 @@ mod tests {
         let line = "4...3.......6..8..........1....5..9..8....6...7.2........1.27..5.3....4.9........";
         let sudoku = Sudoku::from_line(line).unwrap();
         let solve_res = solve(sudoku, &Default::default());
-        match solve_res {
-            SolveResult::Unique(s) => {
-                println!("{}", s.to_line());
-            },
-            SolveResult::Unsolvable(s) => {
-                println!("{}", s.to_line());
-                println!("{:?}", s);
-                panic!();
-            },
-            SolveResult::NonUnique(s1, s2) => {
-                println!("{}", s1.to_line());
-                println!("{}", s2.to_line());
-                println!("{:?}", s1);
-                panic!();
-            }
-        }
+        let expected_sudoku = Sudoku::from_line("468931527751624839392578461134756298289413675675289314846192753513867942927345186").unwrap();
+        assert_eq!(solve_res, SolveResult::Unique(expected_sudoku));
     }
 }

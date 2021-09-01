@@ -9,12 +9,12 @@ use rand::{
 };
 
 // FIXME - add symmetry
-pub struct GenerateOpts {
-    pub solve_opts: SolveOpts,
+pub struct GenerateOpts<'a> {
+    pub solve_opts: SolveOpts<'a>,
     pub rng: Box<dyn RngCore>
 }
 
-impl Default for GenerateOpts {
+impl Default for GenerateOpts<'_> {
     #[inline]
     fn default() -> Self {
         Self {
