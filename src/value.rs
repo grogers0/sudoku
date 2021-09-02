@@ -1,17 +1,22 @@
-use std::fmt;
+use std::{
+    fmt,
+    iter,
+    ops::Range,
+};
 
 /// Represents the value each cell can have, from 1..=9 (stored as 0..9 for ease of lookup in
 /// arrays)
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Value(u8);
 
+impl_type_indexed_slice!(ValueIndexedSlice, Value, pub(crate));
+
 impl Value {
-    pub(crate) const MIN: Value = Value(0);
-    pub(crate) const MAX: Value = Value(8);
+    pub const N: usize = 9;
 
     #[inline]
     pub fn new(idx: usize) -> Self {
-        if idx > Self::MAX.0 as usize { panic!("Value out of bounds") }
+        if idx >= Self::N as usize { panic!("Value out of bounds") }
         Self(idx as u8)
     }
 
@@ -21,13 +26,13 @@ impl Value {
     }
 
     #[inline]
-    pub const fn idx(&self) -> usize {
+    pub const fn as_usize(&self) -> usize {
         self.0 as usize
     }
 
     #[inline]
-    pub fn iter() -> impl Iterator<Item=Self> {
-        Iter(Value::MIN.0)
+    pub fn iter() -> iter::Map<Range<usize>, fn(usize) -> Self> {
+        (0..Self::N).map(|idx| unsafe { Self::new_unchecked(idx) })
     }
 
     pub fn from_char(ch: char) -> Option<Self> {
@@ -37,22 +42,6 @@ impl Value {
 
     pub fn to_char(&self) -> char {
         char::from_digit(self.0 as u32 + 1, 10).unwrap()
-    }
-}
-
-struct Iter(u8);
-
-impl Iterator for Iter {
-    type Item = Value;
-    #[inline]
-    fn next(&mut self) -> Option<Value> {
-        if self.0 > Value::MAX.0 {
-            None
-        } else {
-            let ret = Some(Value(self.0));
-            self.0 += 1;
-            ret
-        }
     }
 }
 

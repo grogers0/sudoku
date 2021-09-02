@@ -1,3 +1,8 @@
+use std::{
+    iter,
+    ops::Range,
+};
+
 /// The position of a cell on the board, numbered as:
 /// ```text
 /// 0  1  2  | 3  4  5  | 6  7  8
@@ -15,13 +20,14 @@
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct Pos(u8);
 
+impl_type_indexed_slice!(PosIndexedSlice, Pos, pub(crate));
+
 impl Pos {
-    pub(crate) const MIN: Pos = Pos(0);
-    pub(crate) const MAX: Pos = Pos(80);
+    pub const N: usize = 81;
 
     #[inline]
     pub fn new(idx: usize) -> Self {
-        if idx > Self::MAX.0 as usize { panic!("Index out of bounds") }
+        if idx >= Self::N as usize { panic!("Index out of bounds") }
         Self(idx as u8)
     }
 
@@ -60,28 +66,12 @@ impl Pos {
     }
 
     #[inline]
-    pub const fn idx(&self) -> usize {
+    pub const fn as_usize(&self) -> usize {
         self.0 as usize
     }
 
     #[inline]
-    pub fn iter() -> impl Iterator<Item=Self> {
-        Iter(Pos::MIN.0)
-    }
-}
-
-struct Iter(u8);
-
-impl Iterator for Iter {
-    type Item = Pos;
-    #[inline]
-    fn next(&mut self) -> Option<Pos> {
-        if self.0 > Pos::MAX.0 {
-            None
-        } else {
-            let ret = Some(Pos(self.0));
-            self.0 += 1;
-            ret
-        }
+    pub fn iter() -> iter::Map<Range<usize>, fn(usize) -> Self> {
+        (0..Self::N).map(|idx| unsafe { Self::new_unchecked(idx) })
     }
 }

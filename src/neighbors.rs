@@ -1,62 +1,57 @@
 use crate::{
     bitset::BitSet81,
-    pos::Pos,
+    pos::{Pos, PosIndexedSlice},
 };
 
 
-pub fn neighbor_positions(pos: Pos) -> &'static [Pos; 20] {
-    &NEIGHBOR_POSITIONS[pos.idx()]
+pub fn neighbor_positions(pos: Pos) -> impl Iterator<Item = Pos> {
+    NEIGHBOR_POSITIONS[pos].iter().cloned()
 }
 
 pub fn neighbor_bitset(pos: Pos) -> BitSet81 {
-    NEIGHBOR_BITSETS[pos.idx()]
+    NEIGHBOR_BITSETS[pos]
 }
 
-const NEIGHBOR_POSITIONS: [[Pos; 20]; 81] = calc_neighbor_positions();
-const NEIGHBOR_BITSETS: [BitSet81; 81] = calc_neighbor_bitsets();
+/// Every cell has 8 neighbors in its block, and 6 in its row and col (which aren't in its block)
+const NUM_NEIGHBORS: usize = 20;
 
-const fn calc_neighbor_positions() -> [[Pos; 20]; 81] {
-    let mut ret = [[Pos::MIN; 20]; 81];
-    let mut pos_raw = 0;
-    while pos_raw < 81 {
-        ret[pos_raw] = calc_neighbor_positions_for(pos_raw);
-        pos_raw += 1;
+#[static_init::dynamic]
+static NEIGHBOR_POSITIONS: PosIndexedSlice<[Pos; NUM_NEIGHBORS]> = calc_neighbor_positions();
+
+#[static_init::dynamic]
+static NEIGHBOR_BITSETS: PosIndexedSlice<BitSet81> = calc_neighbor_bitsets();
+
+
+fn calc_neighbor_positions() -> PosIndexedSlice<[Pos; NUM_NEIGHBORS]> {
+    let mut ret = PosIndexedSlice::from_slice([[Pos::new(0); NUM_NEIGHBORS]; Pos::N]);
+    for pos in Pos::iter() {
+        ret[pos] = calc_neighbor_positions_for(pos);
     }
     ret
 }
 
-const fn calc_neighbor_positions_for(pos_raw: usize) -> [Pos; 20] {
-    let pos = unsafe { Pos::new_unchecked(pos_raw) };
-    let mut ret = [Pos::MIN; 20];
-    let mut pos2_raw = 0;
+fn calc_neighbor_positions_for(pos: Pos) -> [Pos; NUM_NEIGHBORS] {
+    let mut ret = [pos; NUM_NEIGHBORS];
     let mut idx = 0;
-    while pos2_raw < 81 {
-        let pos2 = unsafe { Pos::new_unchecked(pos2_raw) };
-
-        if pos_raw != pos2_raw &&
-            (pos.row() == pos2.row() ||
-             pos.col() == pos2.col() ||
-             pos.block() == pos2.block())
+    for pos2 in Pos::iter() {
+        if pos == pos2 { continue }
+        if pos.row() == pos2.row() ||
+            pos.col() == pos2.col() ||
+            pos.block() == pos2.block()
         {
             ret[idx] = pos2;
             idx += 1;
         }
-        pos2_raw += 1;
     }
     ret
 }
 
-const fn calc_neighbor_bitsets() -> [BitSet81; 81] {
-    let mut ret = [BitSet81::NONE; 81];
-    let mut pos_raw = 0;
-    while pos_raw < 81 {
-        let neighbor_positions = &NEIGHBOR_POSITIONS[pos_raw];
-        let mut idx = 0;
-        while idx < neighbor_positions.len() {
-            ret[pos_raw] = ret[pos_raw].union(unsafe { BitSet81::single_unchecked(neighbor_positions[idx].idx()) });
-            idx += 1;
+fn calc_neighbor_bitsets() -> PosIndexedSlice<BitSet81> {
+    let mut ret = PosIndexedSlice::from_slice([BitSet81::NONE; Pos::N]);
+    for pos in Pos::iter() {
+        for pos2 in NEIGHBOR_POSITIONS[pos].iter() {
+            ret[pos] |= BitSet81::single(pos2.as_usize());
         }
-        pos_raw += 1;
     }
     ret
 }

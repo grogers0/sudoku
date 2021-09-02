@@ -1,3 +1,5 @@
+#[macro_use]
+mod type_indexed_slice;
 mod bitset;
 mod pos;
 mod neighbors;
