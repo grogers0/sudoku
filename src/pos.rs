@@ -17,26 +17,13 @@ use std::{
 /// 63 64 65 | 66 67 68 | 69 70 71
 /// 72 73 74 | 75 76 77 | 78 79 80
 /// ```
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct Pos(u8);
 
+impl_index_type!(Pos(u8), 81);
 impl_type_indexed_slice!(PosIndexedSlice, Pos, pub(crate));
 impl_type_indexed_bitset!(PosBitSet, Pos, u128, PosBitSetIter, pub(crate));
 
 impl Pos {
-    pub const N: usize = 81;
-
-    #[inline]
-    pub fn new(idx: usize) -> Self {
-        if idx >= Self::N as usize { panic!("Index out of bounds") }
-        Self(idx as u8)
-    }
-
-    #[inline]
-    pub const unsafe fn new_unchecked(idx: usize) -> Self {
-        Self(idx as u8)
-    }
-
     #[inline]
     pub fn row_col(row: u8, col: u8) -> Self {
         if row >= 9 { panic!("Row out of bounds") }
@@ -67,12 +54,54 @@ impl Pos {
     }
 
     #[inline]
-    pub const fn as_usize(&self) -> usize {
-        self.0 as usize
+    pub(crate) fn neighbors_iter(&self) -> impl Iterator<Item = Pos> {
+        NEIGHBOR_VECS[*self].iter().cloned()
     }
 
     #[inline]
-    pub fn iter() -> iter::Map<Range<usize>, fn(usize) -> Self> {
-        (0..Self::N).map(|idx| unsafe { Self::new_unchecked(idx) })
+    pub(crate) fn neighbors_bitset(&self) -> PosBitSet {
+        NEIGHBOR_BITSETS[*self]
     }
 }
+
+#[static_init::dynamic]
+static NEIGHBOR_VECS: PosIndexedSlice<Vec<Pos>> = calc_neighbor_vecs();
+
+#[static_init::dynamic]
+static NEIGHBOR_BITSETS: PosIndexedSlice<PosBitSet> = calc_neighbor_bitsets();
+
+const NUM_NEIGHBORS: usize = 20; // 8 in block, 6 in row (not in block), 6 in col (not in block)
+
+fn calc_neighbor_vecs() -> PosIndexedSlice<Vec<Pos>> {
+    const EMPTY_POS_VEC: Vec<Pos> = Vec::new(); // Workaround for array initialization
+    let mut ret = PosIndexedSlice::from_slice([EMPTY_POS_VEC; Pos::N]);
+    for pos in Pos::iter() {
+        for pos2 in Pos::iter() {
+            if pos == pos2 { continue }
+            if pos.row() == pos2.row() ||
+                pos.col() == pos2.col() ||
+                pos.block() == pos2.block()
+            {
+                ret[pos].push(pos2);
+            }
+        }
+    }
+    for vec in &ret {
+        assert_eq!(vec.len(), NUM_NEIGHBORS);
+    }
+    ret
+}
+
+fn calc_neighbor_bitsets() -> PosIndexedSlice<PosBitSet> {
+    let mut ret = PosIndexedSlice::from_slice([PosBitSet::NONE; Pos::N]);
+    for pos in Pos::iter() {
+        for &pos2 in NEIGHBOR_VECS[pos].iter() {
+            ret[pos].set(pos2);
+        }
+    }
+    for bitset in &ret {
+        assert_eq!(bitset.len(), NUM_NEIGHBORS);
+    }
+    ret
+}
+

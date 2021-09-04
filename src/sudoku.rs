@@ -1,7 +1,6 @@
 use crate::{
     pos::{Pos, PosIndexedSlice, PosBitSet},
     value::{MaybeValue, Value, ValueIndexedSlice, ValueBitSet},
-    neighbors::{neighbor_positions, neighbor_bitset},
 };
 use std::{
     cmp::max,
@@ -37,7 +36,7 @@ impl Sudoku {
     }
 
     #[inline]
-    pub fn get_candidates(&self, pos: Pos) -> impl Iterator<Item = Value> {
+    pub fn get_candidates_iter(&self, pos: Pos) -> impl Iterator<Item = Value> {
         self.candidates_by_pos[pos].iter()
     }
 
@@ -66,7 +65,7 @@ impl Sudoku {
 
         for pos in Pos::iter() {
             let val = self.get_value(pos);
-            for pos2 in neighbor_positions(pos) {
+            for pos2 in pos.neighbors_iter() {
                 if val == self.get_value(pos2) {
                     return false
                 }
@@ -85,10 +84,10 @@ impl Sudoku {
             self.candidates_by_value[val2].remove(pos);
         }
 
-        for pos2 in neighbor_positions(pos) {
+        for pos2 in pos.neighbors_iter() {
             self.candidates_by_pos[pos2].remove(val);
         }
-        self.candidates_by_value[val] &= !neighbor_bitset(pos);
+        self.candidates_by_value[val] &= !pos.neighbors_bitset();
     }
 
     pub fn remove_candidate(&mut self, pos: Pos, val: Value) {

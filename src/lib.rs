@@ -1,10 +1,7 @@
 #[macro_use]
-mod type_indexed_slice;
-#[macro_use]
-mod type_indexed_bitset;
+mod type_indexed;
 
 mod pos;
-mod neighbors;
 mod value;
 mod sudoku;
 
