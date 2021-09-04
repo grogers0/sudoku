@@ -4,6 +4,7 @@ use crate::{
         strategies::{
             self,
             naked_single::naked_single,
+            hidden_single::hidden_single,
             guess_and_check::guess_and_check,
         },
     },
@@ -73,7 +74,8 @@ impl SolveResult {
 fn run_strategies(sudoku: &Sudoku, opts: &SolveOpts) -> StrategyResult {
     for strat in opts.strategies {
         let res = match strat {
-            Strategy::NakedSingle => naked_single(&sudoku)
+            Strategy::NakedSingle => naked_single(&sudoku),
+            Strategy::HiddenSingle => hidden_single(&sudoku)
         };
         if res.has_changes() { return res }
     }

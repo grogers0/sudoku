@@ -1,7 +1,4 @@
-use std::{
-    iter,
-    ops::Range,
-};
+use std::fmt;
 
 /// The position of a cell on the board, numbered as:
 /// ```text
@@ -64,15 +61,16 @@ impl Pos {
     }
 }
 
-#[static_init::dynamic]
-static NEIGHBOR_VECS: PosIndexedSlice<Vec<Pos>> = calc_neighbor_vecs();
-
-#[static_init::dynamic]
-static NEIGHBOR_BITSETS: PosIndexedSlice<PosBitSet> = calc_neighbor_bitsets();
+impl fmt::Display for Pos {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "r{}c{}", self.row() + 1, self.col() + 1)
+    }
+}
 
 const NUM_NEIGHBORS: usize = 20; // 8 in block, 6 in row (not in block), 6 in col (not in block)
 
-fn calc_neighbor_vecs() -> PosIndexedSlice<Vec<Pos>> {
+#[static_init::dynamic]
+static NEIGHBOR_VECS: PosIndexedSlice<Vec<Pos>> = {
     const EMPTY_POS_VEC: Vec<Pos> = Vec::new(); // Workaround for array initialization
     let mut ret = PosIndexedSlice::from_slice([EMPTY_POS_VEC; Pos::N]);
     for pos in Pos::iter() {
@@ -90,18 +88,19 @@ fn calc_neighbor_vecs() -> PosIndexedSlice<Vec<Pos>> {
         assert_eq!(vec.len(), NUM_NEIGHBORS);
     }
     ret
-}
+};
 
-fn calc_neighbor_bitsets() -> PosIndexedSlice<PosBitSet> {
+#[static_init::dynamic]
+static NEIGHBOR_BITSETS: PosIndexedSlice<PosBitSet> = {
     let mut ret = PosIndexedSlice::from_slice([PosBitSet::NONE; Pos::N]);
     for pos in Pos::iter() {
         for &pos2 in NEIGHBOR_VECS[pos].iter() {
-            ret[pos].set(pos2);
+            ret[pos].insert(pos2);
         }
     }
     for bitset in &ret {
         assert_eq!(bitset.len(), NUM_NEIGHBORS);
     }
     ret
-}
+};
 

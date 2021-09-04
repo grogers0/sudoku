@@ -1,8 +1,4 @@
-use std::{
-    fmt,
-    iter,
-    ops::Range,
-};
+use std::fmt;
 
 /// Represents the value each cell can have, from 1..=9 (stored as 0..9 for ease of lookup in
 /// arrays)

@@ -2,7 +2,8 @@ use crate::{Pos, Value};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Strategy {
-    NakedSingle
+    NakedSingle,
+    HiddenSingle
 }
 
 // TODO - return a description of how we decided on the result?

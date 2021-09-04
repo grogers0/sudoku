@@ -5,6 +5,7 @@ macro_rules! impl_index_type {
             const __N: $UintType = $Num; // This should prevent mistakes where the size of the UintType is too small
             pub const N: usize = $Num;
 
+            #[allow(dead_code)]
             #[inline]
             pub fn new(idx: usize) -> Self {
                 if idx >= Self::N as usize { panic!("Index out of bounds") }
@@ -22,7 +23,7 @@ macro_rules! impl_index_type {
             }
 
             #[inline]
-            pub fn iter() -> iter::Map<Range<usize>, fn(usize) -> Self> {
+            pub fn iter() -> std::iter::Map<std::ops::Range<usize>, fn(usize) -> Self> {
                 (0..Self::N).map(|idx| unsafe { Self::new_unchecked(idx) })
             }
         }
@@ -182,7 +183,7 @@ macro_rules! impl_type_indexed_bitset {
             }
 
             #[inline]
-            pub fn set(&mut self, idx: $IndexType) {
+            pub fn insert(&mut self, idx: $IndexType) {
                 self.0 |= 1 << idx.as_usize();
             }
 
@@ -233,6 +234,12 @@ macro_rules! impl_type_indexed_bitset {
                 self.0.count_ones() as usize
             }
 
+            #[allow(dead_code)]
+            #[inline]
+            pub const fn is_empty(&self) -> bool {
+                self.0 == Self::NONE.0
+            }
+
             /// Returns an iterator which yields all elements whose bits that are set
             #[allow(dead_code)]
             #[inline]
@@ -277,7 +284,7 @@ macro_rules! impl_type_indexed_bitset {
             where It: IntoIterator<Item = $IndexType> {
                 let mut ret = Self::new();
                 for idx in iter {
-                    ret.set(idx);
+                    ret.insert(idx);
                 }
                 ret
             }

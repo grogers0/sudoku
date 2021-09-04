@@ -194,7 +194,7 @@ impl Sudoku {
                 state.values_to_set.push((pos, state.candidates.iter().next().unwrap()));
             } else {
                 for val in state.candidates.iter() {
-                    sudoku.candidates_by_value[val].set(pos);
+                    sudoku.candidates_by_value[val].insert(pos);
                 }
                 sudoku.candidates_by_pos[pos] = state.candidates;
             };
@@ -212,7 +212,7 @@ impl Sudoku {
                         state.candidates = ValueBitSet::NONE;
                     }
 
-                    state.candidates.set(Value::from_char(ch).unwrap());
+                    state.candidates.insert(Value::from_char(ch).unwrap());
                 },
                 _ => return Err(SudokuParseError::InvalidChar(ch))
             }
@@ -279,8 +279,7 @@ impl Sudoku {
         s
     }
 
-    #[cfg(debug_assertions)]
-    fn check_consistency(&self) {
+    pub(crate) fn check_consistency(&self) {
         for pos in Pos::iter() {
             if let Some(_) = self.get_value(pos) {
                 if self.get_candidates_by_pos(pos) != ValueBitSet::NONE {
@@ -297,10 +296,6 @@ impl Sudoku {
             }
         }
     }
-
-    #[inline]
-    #[cfg(not(debug_assertions))]
-    fn check_consistency(&self) { }
 }
 
 impl fmt::Debug for Sudoku {
