@@ -10,6 +10,7 @@ use std::{
 pub struct Value(u8);
 
 impl_type_indexed_slice!(ValueIndexedSlice, Value, pub(crate));
+impl_type_indexed_bitset!(ValueBitSet, Value, u16, ValueBitSetIter, pub(crate));
 
 impl Value {
     pub const N: usize = 9;

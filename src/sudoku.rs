@@ -1,7 +1,6 @@
 use crate::{
-    bitset::{BitSet9, BitSet81},
-    pos::{Pos, PosIndexedSlice},
-    value::{Value, ValueIndexedSlice, MaybeValue},
+    pos::{Pos, PosIndexedSlice, PosBitSet},
+    value::{MaybeValue, Value, ValueIndexedSlice, ValueBitSet},
     neighbors::{neighbor_positions, neighbor_bitset},
 };
 use std::{
@@ -12,8 +11,8 @@ use std::{
 #[derive(Clone, PartialEq, Eq)]
 pub struct Sudoku {
     values: PosIndexedSlice<MaybeValue>,
-    candidates_by_pos: PosIndexedSlice<BitSet9>,
-    candidates_by_value: ValueIndexedSlice<BitSet81>
+    candidates_by_pos: PosIndexedSlice<ValueBitSet>,
+    candidates_by_value: ValueIndexedSlice<PosBitSet>
 }
 
 #[derive(Debug)]
@@ -27,8 +26,8 @@ impl Sudoku {
     pub fn new() -> Self {
         Self {
             values: PosIndexedSlice::from_slice([MaybeValue::NONE; Pos::N]),
-            candidates_by_pos: PosIndexedSlice::from_slice([BitSet9::ALL; Pos::N]),
-            candidates_by_value: ValueIndexedSlice::from_slice([BitSet81::ALL; Value::N])
+            candidates_by_pos: PosIndexedSlice::from_slice([ValueBitSet::ALL; Pos::N]),
+            candidates_by_value: ValueIndexedSlice::from_slice([PosBitSet::ALL; Value::N])
         }
     }
 
@@ -38,21 +37,26 @@ impl Sudoku {
     }
 
     #[inline]
-    pub fn get_candidates_by_pos(&self, pos: Pos) -> BitSet9 {
+    pub fn get_candidates(&self, pos: Pos) -> impl Iterator<Item = Value> {
+        self.candidates_by_pos[pos].iter()
+    }
+
+    #[inline]
+    pub(crate) fn get_candidates_by_pos(&self, pos: Pos) -> ValueBitSet {
         self.candidates_by_pos[pos]
     }
 
     #[inline]
-    pub fn get_candidates_by_value(&self, val: Value) -> BitSet81 {
+    pub(crate) fn get_candidates_by_value(&self, val: Value) -> PosBitSet {
         self.candidates_by_value[val]
     }
 
     pub fn progress_possible(&self) -> bool {
-        let mut candidates = BitSet81::NONE;
+        let mut candidates = PosBitSet::NONE;
         for val in Value::iter() {
             candidates |= self.get_candidates_by_value(val);
         }
-        candidates != BitSet81::NONE
+        candidates != PosBitSet::NONE
     }
 
     pub fn is_solved(&self) -> bool {
@@ -72,26 +76,26 @@ impl Sudoku {
     }
 
     pub fn set_value(&mut self, pos: Pos, val: Value) {
-        if self.get_value(pos).is_some() { panic!("Cell already has value present") }
+        debug_assert!(self.get_value(pos).is_none());
 
         self.values[pos] = MaybeValue::from_option(Some(val));
 
-        self.candidates_by_pos[pos] = BitSet9::NONE;
+        self.candidates_by_pos[pos] = ValueBitSet::NONE;
         for val2 in Value::iter() {
-            self.candidates_by_value[val2].clear(pos.as_usize());
+            self.candidates_by_value[val2].remove(pos);
         }
 
         for pos2 in neighbor_positions(pos) {
-            self.candidates_by_pos[pos2].clear(val.as_usize());
+            self.candidates_by_pos[pos2].remove(val);
         }
         self.candidates_by_value[val] &= !neighbor_bitset(pos);
     }
 
     pub fn remove_candidate(&mut self, pos: Pos, val: Value) {
-        if self.get_candidates_by_pos(pos).get(val.as_usize()) { panic!("Cell doesn't contain this candidate") }
+        debug_assert!(!self.get_candidates_by_pos(pos).contains(val));
 
-        self.candidates_by_pos[pos].clear(val.as_usize());
-        self.candidates_by_value[val].clear(pos.as_usize());
+        self.candidates_by_pos[pos].remove(val);
+        self.candidates_by_value[val].remove(pos);
     }
 
     /// Parses a sudoku of the form:
@@ -166,19 +170,19 @@ impl Sudoku {
         struct ParseState<PosIter : Iterator<Item=Pos>> {
             has_whitespace: bool,
             pos_iter: PosIter,
-            candidates: BitSet9,
+            candidates: ValueBitSet,
             values_to_set: Vec<(Pos, Value)>
         }
         let mut state = ParseState {
             has_whitespace: false,
             pos_iter: Pos::iter(),
-            candidates: BitSet9::NONE,
+            candidates: ValueBitSet::NONE,
             values_to_set: Vec::new()
         };
         let mut sudoku = Sudoku {
             values: PosIndexedSlice::from_slice([MaybeValue::NONE; Pos::N]),
-            candidates_by_pos: PosIndexedSlice::from_slice([BitSet9::NONE; Pos::N]),
-            candidates_by_value: ValueIndexedSlice::from_slice([BitSet81::NONE; Value::N])
+            candidates_by_pos: PosIndexedSlice::from_slice([ValueBitSet::NONE; Pos::N]),
+            candidates_by_value: ValueIndexedSlice::from_slice([PosBitSet::NONE; Value::N])
         };
 
         fn process_prev_cell<PosIter : Iterator<Item=Pos>>(state: &mut ParseState<PosIter>,
@@ -187,12 +191,11 @@ impl Sudoku {
                 Some(p) => p,
                 None => return Err(SudokuParseError::TooMuchInput)
             };
-            if state.candidates.count_ones() == 1 {
-                state.values_to_set.push((pos,
-                        Value::new(state.candidates.iter().next().unwrap())));
+            if state.candidates.len() == 1 {
+                state.values_to_set.push((pos, state.candidates.iter().next().unwrap()));
             } else {
-                for value_idx in state.candidates.iter() {
-                    sudoku.candidates_by_value[Value::new(value_idx)].set(pos.as_usize());
+                for val in state.candidates.iter() {
+                    sudoku.candidates_by_value[val].set(pos);
                 }
                 sudoku.candidates_by_pos[pos] = state.candidates;
             };
@@ -207,10 +210,10 @@ impl Sudoku {
                     if state.has_whitespace {
                         process_prev_cell(&mut state, &mut sudoku)?;
                         state.has_whitespace = false;
-                        state.candidates = BitSet9::NONE;
+                        state.candidates = ValueBitSet::NONE;
                     }
 
-                    state.candidates.set(ch.to_digit(10).unwrap() as usize - 1);
+                    state.candidates.set(Value::from_char(ch).unwrap());
                 },
                 _ => return Err(SudokuParseError::InvalidChar(ch))
             }
@@ -234,7 +237,7 @@ impl Sudoku {
         for pos in Pos::iter() {
             widths[pos.col() as usize] = max(
                 widths[pos.col() as usize],
-                self.get_candidates_by_pos(pos).count_ones());
+                self.get_candidates_by_pos(pos).len());
         }
 
         let mut s = String::new();
@@ -244,8 +247,8 @@ impl Sudoku {
                 s.push(value.to_char());
                 written_chars = 1;
             } else {
-                for value_idx in self.get_candidates_by_pos(pos).iter() {
-                    s.push(Value::new(value_idx).to_char());
+                for val in self.get_candidates_by_pos(pos).iter() {
+                    s.push(val.to_char());
                     written_chars += 1;
                 }
             }
@@ -281,13 +284,15 @@ impl Sudoku {
     fn check_consistency(&self) {
         for pos in Pos::iter() {
             if let Some(_) = self.get_value(pos) {
-                if self.get_candidates_by_pos(pos) != BitSet9::NONE {
+                if self.get_candidates_by_pos(pos) != ValueBitSet::NONE {
                     panic!("Cell with value set but has candidates");
                 }
             }
 
             for val in Value::iter() {
-                if self.get_candidates_by_pos(pos).get(val.as_usize()) != self.get_candidates_by_value(val).get(pos.as_usize()) {
+                if self.get_candidates_by_pos(pos).contains(val) !=
+                    self.get_candidates_by_value(val).contains(pos)
+                {
                     panic!("Candidates by pos don't match candidates by value");
                 }
             }

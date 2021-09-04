@@ -21,6 +21,7 @@ use std::{
 pub struct Pos(u8);
 
 impl_type_indexed_slice!(PosIndexedSlice, Pos, pub(crate));
+impl_type_indexed_bitset!(PosBitSet, Pos, u128, PosBitSetIter, pub(crate));
 
 impl Pos {
     pub const N: usize = 81;

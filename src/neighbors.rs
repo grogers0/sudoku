@@ -1,6 +1,5 @@
 use crate::{
-    bitset::BitSet81,
-    pos::{Pos, PosIndexedSlice},
+    pos::{Pos, PosIndexedSlice, PosBitSet},
 };
 
 
@@ -8,7 +7,7 @@ pub fn neighbor_positions(pos: Pos) -> impl Iterator<Item = Pos> {
     NEIGHBOR_POSITIONS[pos].iter().cloned()
 }
 
-pub fn neighbor_bitset(pos: Pos) -> BitSet81 {
+pub(crate) fn neighbor_bitset(pos: Pos) -> PosBitSet {
     NEIGHBOR_BITSETS[pos]
 }
 
@@ -19,7 +18,7 @@ const NUM_NEIGHBORS: usize = 20;
 static NEIGHBOR_POSITIONS: PosIndexedSlice<[Pos; NUM_NEIGHBORS]> = calc_neighbor_positions();
 
 #[static_init::dynamic]
-static NEIGHBOR_BITSETS: PosIndexedSlice<BitSet81> = calc_neighbor_bitsets();
+static NEIGHBOR_BITSETS: PosIndexedSlice<PosBitSet> = calc_neighbor_bitsets();
 
 
 fn calc_neighbor_positions() -> PosIndexedSlice<[Pos; NUM_NEIGHBORS]> {
@@ -46,11 +45,11 @@ fn calc_neighbor_positions_for(pos: Pos) -> [Pos; NUM_NEIGHBORS] {
     ret
 }
 
-fn calc_neighbor_bitsets() -> PosIndexedSlice<BitSet81> {
-    let mut ret = PosIndexedSlice::from_slice([BitSet81::NONE; Pos::N]);
+fn calc_neighbor_bitsets() -> PosIndexedSlice<PosBitSet> {
+    let mut ret = PosIndexedSlice::from_slice([PosBitSet::NONE; Pos::N]);
     for pos in Pos::iter() {
-        for pos2 in NEIGHBOR_POSITIONS[pos].iter() {
-            ret[pos] |= BitSet81::single(pos2.as_usize());
+        for &pos2 in NEIGHBOR_POSITIONS[pos].iter() {
+            ret[pos].set(pos2);
         }
     }
     ret

@@ -1,14 +1,15 @@
 #[macro_use]
 mod type_indexed_slice;
-mod bitset;
+#[macro_use]
+mod type_indexed_bitset;
+
 mod pos;
 mod neighbors;
-mod sudoku;
 mod value;
+mod sudoku;
 
 pub use crate::{
     pos::Pos,
-    bitset::{BitSet9, BitSet81},
     sudoku::Sudoku,
     value::Value,
 };

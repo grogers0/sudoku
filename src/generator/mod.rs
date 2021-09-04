@@ -1,6 +1,6 @@
 use crate::{
     solver::{solve, SolveOpts, SolveResult},
-    Pos, Sudoku, Value
+    Pos, Sudoku,
 };
 use rand::{
     seq::SliceRandom,
@@ -24,13 +24,11 @@ impl Default for GenerateOpts<'_> {
 }
 
 fn fill_initial_chunk(sudoku: &mut Sudoku, rng: &mut dyn RngCore, positions: &[Pos]) {
-    let mut candidates: Vec<_> = sudoku.get_candidates_by_pos(positions[0]).iter()
-        .map(|val_idx| Value::new(val_idx))
-        .collect();
+    let mut candidates: Vec<_> = sudoku.get_candidates_by_pos(positions[0]).iter().collect();
     assert!(candidates.len() >= positions.len());
     candidates.partial_shuffle(rng, positions.len());
-    for (&pos, value) in positions.into_iter().zip(candidates) {
-        sudoku.set_value(pos, value);
+    for (&pos, val) in positions.into_iter().zip(candidates) {
+        sudoku.set_value(pos, val);
     }
 }
 
@@ -75,15 +73,13 @@ fn random_guess_and_check_to_fill(sudoku: Sudoku, rng: &mut dyn RngCore) -> Opti
     // I don't think it matters if the position we choose is random, since the candidate is
     let pos = Pos::iter()
         .filter(|&pos| sudoku.get_value(pos).is_none())
-        .min_by_key(|&pos| sudoku.get_candidates_by_pos(pos).count_ones())
+        .min_by_key(|&pos| sudoku.get_candidates_by_pos(pos).len())
         .unwrap();
-    let mut candidates: Vec<_> = sudoku.get_candidates_by_pos(pos).iter()
-        .map(|value_idx| Value::new(value_idx))
-        .collect();
+    let mut candidates: Vec<_> = sudoku.get_candidates_by_pos(pos).iter().collect();
     candidates.shuffle(rng);
-    for value in candidates {
+    for val in candidates {
         let mut sudoku2 = sudoku.clone();
-        sudoku2.set_value(pos, value);
+        sudoku2.set_value(pos, val);
         match random_guess_and_check_to_fill(sudoku2, rng) {
             Some(s) => return Some(s),
             None => () // Try next candidate as this was not solvable

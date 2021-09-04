@@ -11,7 +11,7 @@
 /// These cannot be part of a trait because of current limitations in rustc.
 ///
 /// Additionally, the `KeyType` class must prevent any instance from being created that would allow
-/// `as_usize` to return a value greater than `N`
+/// `as_usize` to return a value greater than or equal to `N`
 macro_rules! impl_type_indexed_slice {
     ($StructName:ident, $KeyType:ty, $Visibility:vis) => {
         $Visibility struct $StructName<T>([T; <$KeyType>::N]);
