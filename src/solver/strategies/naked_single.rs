@@ -1,18 +1,15 @@
+use super::StrategyResult;
 use crate::{
-    solver::strategy::StrategyResult,
     Pos, Sudoku,
 };
 
-pub(crate) fn naked_single(sudoku: &Sudoku) -> StrategyResult {
-    let mut ret = Vec::new();
+pub(crate) fn naked_single(sudoku: &Sudoku) -> Option<StrategyResult> {
     for pos in Pos::iter() {
         let candidates = sudoku.get_candidates_by_pos(pos);
         if candidates.len() == 1 {
-            ret.push((pos, candidates.iter().next().unwrap()));
+            let val = candidates.iter().next().unwrap();
+            return Some(StrategyResult::NakedSingle(pos, val));
         }
     }
-    StrategyResult {
-        false_candidates: Vec::new(),
-        true_candidates: ret
-    }
+    None
 }

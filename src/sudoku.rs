@@ -65,6 +65,7 @@ impl Sudoku {
 
         for pos in Pos::iter() {
             let val = self.get_value(pos);
+            if val.is_none() { return false }
             for pos2 in pos.neighbors_iter() {
                 if val == self.get_value(pos2) {
                     return false
@@ -221,7 +222,7 @@ impl Sudoku {
         if state.pos_iter.next().is_some() {
             return Err(SudokuParseError::TooLittleInput)
         }
-        // NOTE - happends at the end so if the pencilmarks had superfluous candidates we would
+        // NOTE - Set values at the end so if the pencilmarks had superfluous candidates we would
         // eliminate them, instead of having to treat them as naked singles or something
         for (pos, val) in state.values_to_set {
             sudoku.set_value(pos, val);

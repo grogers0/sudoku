@@ -1,13 +1,6 @@
 use crate::{
-    solver::{
-        strategy::{Strategy, StrategyResult},
-        strategies::{
-            self,
-            naked_single::naked_single,
-            hidden_single::hidden_single,
-            guess_and_check::guess_and_check,
-            locked_candidate::locked_candidate,
-        },
+    solver::strategies::{
+        self, Strategy, StrategyResult,
     },
     Sudoku,
 };
@@ -37,72 +30,90 @@ impl SolveOpts<'_> {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum SolveSuccess {
+    Unsolvable,
+    Unique,
+    NonUnique
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SolveResult {
-    Unsolvable(Sudoku), // The sudoku as far as we were able to solve it
-    Unique(Sudoku),
-    NonUnique(Sudoku, Sudoku)
+pub struct SolveResult {
+    pub success: SolveSuccess,
+    /// If the sudoku was solvable, one of those solutions, otherwise the sudoku as far as we could
+    /// solve it.
+    pub sudoku: Sudoku,
+    pub(crate) steps: Vec<StrategyResult> // TODO how to expose House, etc?
 }
 
 impl SolveResult {
     #[inline]
     pub fn is_unsolvable(&self) -> bool {
-        matches!(self, SolveResult::Unsolvable(_))
+        matches!(self.success, SolveSuccess::Unsolvable)
     }
 
     #[inline]
     pub fn is_unique(&self) -> bool {
-        matches!(self, SolveResult::Unique(_))
+        matches!(self.success, SolveSuccess::Unique)
     }
 
     #[inline]
     pub fn is_non_unique(&self) -> bool {
-        matches!(self, SolveResult::NonUnique(_,_))
+        matches!(self.success, SolveSuccess::NonUnique)
     }
 
     pub(crate) fn merge(self, other: SolveResult) -> SolveResult {
         match (self, other) {
-            (SolveResult::Unsolvable(s), SolveResult::Unsolvable(_)) => SolveResult::Unsolvable(s),
-            (SolveResult::Unsolvable(_), solvable_result) => solvable_result,
-            (SolveResult::Unique(s), SolveResult::Unsolvable(_)) => SolveResult::Unique(s),
-            (SolveResult::Unique(s1), SolveResult::Unique(s2)) => SolveResult::NonUnique(s1, s2),
-            (SolveResult::Unique(s1), SolveResult::NonUnique(s2, _)) => SolveResult::NonUnique(s1, s2),
-            (SolveResult::NonUnique(s1, s2), _) => SolveResult::NonUnique(s1, s2)
+            (lhs@SolveResult { success: SolveSuccess::Unsolvable, sudoku: _, steps: _ },
+             SolveResult { success: SolveSuccess::Unsolvable, .. }) => lhs,
+            (SolveResult { success: SolveSuccess::Unsolvable, .. }, solvable_result) => solvable_result,
+            (lhs@SolveResult { success: SolveSuccess::Unique, sudoku: _, steps: _ },
+             SolveResult { success: SolveSuccess::Unsolvable, .. }) => lhs,
+            (SolveResult { success: SolveSuccess::Unique, sudoku, steps }, _also_solvable) => {
+                SolveResult { success: SolveSuccess::NonUnique, sudoku, steps }
+            },
+            (lhs@SolveResult { success: SolveSuccess::NonUnique, sudoku: _, steps: _ }, _) => lhs
         }
     }
 }
 
-fn run_strategies(sudoku: &Sudoku, opts: &SolveOpts) -> StrategyResult {
+fn run_strategies(sudoku: &Sudoku, opts: &SolveOpts) -> Option<StrategyResult> {
     for strat in opts.strategies {
         let res = match strat {
-            Strategy::NakedSingle => naked_single(&sudoku),
-            Strategy::HiddenSingle => hidden_single(&sudoku),
-            Strategy::LockedCandidate => locked_candidate(&sudoku)
+            Strategy::NakedSingle => strategies::naked_single(&sudoku),
+            Strategy::HiddenSingle => strategies::hidden_single(&sudoku),
+            Strategy::LockedCandidate => strategies::locked_candidate(&sudoku),
+            Strategy::NakedSubset(siz) => strategies::naked_subset(&sudoku, siz)
         };
-        if res.has_changes() { return res }
+        if res.is_some() { return res }
     }
-    Default::default()
+    None
 }
 
 pub fn solve(mut sudoku: Sudoku, opts: &SolveOpts) -> SolveResult {
+    let mut steps = Vec::new();
     while sudoku.progress_possible() {
-        let res = run_strategies(&sudoku, &opts);
-        if !res.has_changes() { break } // No further progress unless we guess and check
-        for (pos, val) in res.false_candidates {
-            sudoku.remove_candidate(pos, val);
-        }
-        for (pos, val) in res.true_candidates {
-            sudoku.set_value(pos, val);
+        match run_strategies(&sudoku, &opts) {
+            None => break, // No further progress unless we guess and check
+            Some(res) => {
+                steps.push(res.clone());
+                for (pos, val) in res.candidates_to_remove() {
+                    sudoku.remove_candidate(pos, val);
+                }
+                for (pos, val) in res.candidates_to_set() {
+                    sudoku.set_value(pos, val);
+                }
+            }
         }
     }
 
     if sudoku.is_solved() {
-        return SolveResult::Unique(sudoku)
+        return SolveResult { success: SolveSuccess::Unique, sudoku, steps }
     }
     if opts.guess_and_check && sudoku.progress_possible() {
-        return guess_and_check(&sudoku);
+        return strategies::guess_and_check(&sudoku);
     }
-    SolveResult::Unsolvable(sudoku)
+    SolveResult { success: SolveSuccess::Unsolvable, sudoku, steps }
 }
 
 #[cfg(test)]
@@ -115,6 +126,7 @@ mod tests {
         let sudoku = Sudoku::from_line(line).unwrap();
         let solve_res = solve(sudoku, &Default::default());
         let expected_sudoku = Sudoku::from_line("468931527751624839392578461134756298289413675675289314846192753513867942927345186").unwrap();
-        assert_eq!(solve_res, SolveResult::Unique(expected_sudoku));
+        assert!(matches!(solve_res.success, SolveSuccess::Unique));
+        assert_eq!(solve_res.sudoku, expected_sudoku);
     }
 }

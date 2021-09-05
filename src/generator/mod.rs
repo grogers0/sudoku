@@ -1,5 +1,5 @@
 use crate::{
-    solver::{solve, SolveOpts, SolveResult, Row, Col, Block},
+    solver::{solve, SolveOpts, SolveResult, SolveSuccess, Row, Col, Block},
     Pos, Sudoku,
 };
 use rand::{
@@ -46,9 +46,9 @@ fn random_guess_and_check_to_fill(sudoku: Sudoku, rng: &mut dyn RngCore) -> Opti
     let mut no_guess_and_check = SolveOpts::fast();
     no_guess_and_check.guess_and_check = false;
     let sudoku = match solve(sudoku, &no_guess_and_check) {
-        SolveResult::Unsolvable(s) => s,
-        SolveResult::Unique(s) => return Some(s),
-        SolveResult::NonUnique(_, _) => unreachable!()
+        SolveResult { success: SolveSuccess::Unsolvable, sudoku: s, .. } => s,
+        SolveResult { success: SolveSuccess::Unique, sudoku: s, .. } => return Some(s),
+        SolveResult { success: SolveSuccess::NonUnique, .. } => unreachable!()
     };
 
     if !sudoku.progress_possible() {
@@ -105,9 +105,9 @@ pub fn generate(mut opts: GenerateOpts) -> Sudoku {
         if sudoku.get_value(pos).is_none() { continue }
         let sudoku2 = sudoku_without_given(&sudoku, pos);
         match solve(sudoku2.clone(), &opts.solve_opts) {
-            SolveResult::NonUnique(_, _) => (),
-            SolveResult::Unique(_) => sudoku = sudoku2,
-            SolveResult::Unsolvable(_) => unreachable!()
+            SolveResult { success: SolveSuccess::NonUnique, .. } => (),
+            SolveResult { success: SolveSuccess::Unique, .. } => sudoku = sudoku2,
+            SolveResult { success: SolveSuccess::Unsolvable, .. } => unreachable!()
         };
     }
     sudoku
