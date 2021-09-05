@@ -13,21 +13,21 @@ pub(crate) fn hidden_single(sudoku: &Sudoku) -> StrategyResult {
     for val in Value::iter() {
         let all_candidates = sudoku.get_candidates_by_value(val);
         if all_candidates.is_empty() { continue } // Fast path for fully solved values
-        let mut deduced = PosBitSet::NONE;
+        let mut deductions = PosBitSet::NONE;
+
         for house in House::iter() {
             let candidates = all_candidates & house.members_bitset();
             if candidates.len() == 1 {
-                deduced |= candidates;
+                deductions |= candidates;
             }
         }
-        for pos in deduced.iter() {
-            // When solving an unsolvable sudoku, we may choose two values for the same position,
-            // just pick one of them
-            if !already_chosen.contains(pos) {
-                already_chosen.insert(pos);
-                ret.push((pos, val));
-            }
+
+        // When solving an unsolvable sudoku, we may choose two different values for the same
+        // position, just pick one of them and figure out later that it's unsolvable
+        for pos in deductions.difference(already_chosen).iter() {
+            ret.push((pos, val));
         }
+        already_chosen |= deductions;
     }
     StrategyResult {
         false_candidates: Vec::new(),

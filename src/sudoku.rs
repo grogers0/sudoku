@@ -91,7 +91,7 @@ impl Sudoku {
     }
 
     pub fn remove_candidate(&mut self, pos: Pos, val: Value) {
-        debug_assert!(!self.get_candidates_by_pos(pos).contains(val));
+        debug_assert!(self.get_candidates_by_pos(pos).contains(val));
 
         self.candidates_by_pos[pos].remove(val);
         self.candidates_by_value[val].remove(pos);
@@ -221,10 +221,10 @@ impl Sudoku {
         if state.pos_iter.next().is_some() {
             return Err(SudokuParseError::TooLittleInput)
         }
-        // At the end so if the pencilmarks had superfluous candidates we would eliminate them,
-        // instead of having to treat them as naked singles or something
-        for (pos, value) in state.values_to_set {
-            sudoku.set_value(pos, value);
+        // NOTE - happends at the end so if the pencilmarks had superfluous candidates we would
+        // eliminate them, instead of having to treat them as naked singles or something
+        for (pos, val) in state.values_to_set {
+            sudoku.set_value(pos, val);
         }
         sudoku.check_consistency();
         Ok(sudoku)
@@ -242,8 +242,8 @@ impl Sudoku {
         let mut s = String::new();
         for pos in Pos::iter() {
             let mut written_chars = 0;
-            if let Some(value) = self.get_value(pos) {
-                s.push(value.to_char());
+            if let Some(val) = self.get_value(pos) {
+                s.push(val.to_char());
                 written_chars = 1;
             } else {
                 for val in self.get_candidates_by_pos(pos).iter() {

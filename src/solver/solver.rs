@@ -6,6 +6,7 @@ use crate::{
             naked_single::naked_single,
             hidden_single::hidden_single,
             guess_and_check::guess_and_check,
+            locked_candidate::locked_candidate,
         },
     },
     Sudoku,
@@ -30,7 +31,7 @@ impl Default for SolveOpts<'_> {
 impl SolveOpts<'_> {
     pub fn fast() -> Self {
         Self {
-            strategies: &strategies::ALL,
+            strategies: &strategies::FAST,
             guess_and_check: true
         }
     }
@@ -75,7 +76,8 @@ fn run_strategies(sudoku: &Sudoku, opts: &SolveOpts) -> StrategyResult {
     for strat in opts.strategies {
         let res = match strat {
             Strategy::NakedSingle => naked_single(&sudoku),
-            Strategy::HiddenSingle => hidden_single(&sudoku)
+            Strategy::HiddenSingle => hidden_single(&sudoku),
+            Strategy::LockedCandidate => locked_candidate(&sudoku)
         };
         if res.has_changes() { return res }
     }
@@ -86,11 +88,11 @@ pub fn solve(mut sudoku: Sudoku, opts: &SolveOpts) -> SolveResult {
     while sudoku.progress_possible() {
         let res = run_strategies(&sudoku, &opts);
         if !res.has_changes() { break } // No further progress unless we guess and check
-        for (pos, value) in res.false_candidates {
-            sudoku.remove_candidate(pos, value);
+        for (pos, val) in res.false_candidates {
+            sudoku.remove_candidate(pos, val);
         }
-        for (pos, value) in res.true_candidates {
-            sudoku.set_value(pos, value);
+        for (pos, val) in res.true_candidates {
+            sudoku.set_value(pos, val);
         }
     }
 

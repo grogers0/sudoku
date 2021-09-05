@@ -1,5 +1,6 @@
 use crate::{
     pos::{Pos, PosBitSet},
+    solver::Line,
 };
 
 pub(crate) struct Block(u8);
@@ -23,12 +24,17 @@ impl Block {
     pub fn members_bitset(&self) -> PosBitSet {
         MEMBER_BITSETS[*self]
     }
+
+    #[inline]
+    pub fn intersecting_lines_iter(&self) -> impl Iterator<Item = Line> {
+        INTERSECTING_LINES[*self].iter().cloned()
+    }
 }
 
 #[static_init::dynamic]
 static MEMBER_VECS: BlockIndexedSlice<Vec<Pos>> = {
-    const EMPTY_POS_VEC: Vec<Pos> = Vec::new(); // Workaround for array initialization
-    let mut ret = BlockIndexedSlice::from_slice([EMPTY_POS_VEC; Block::N]);
+    const EMPTY_VEC: Vec<Pos> = Vec::new(); // Workaround for array initialization
+    let mut ret = BlockIndexedSlice::from_slice([EMPTY_VEC; Block::N]);
     for pos in Pos::iter() {
         ret[Block::from_pos(pos)].push(pos);
     }
@@ -46,6 +52,21 @@ static MEMBER_BITSETS: BlockIndexedSlice<PosBitSet> = {
             ret[block].insert(pos);
         }
         assert_eq!(ret[block].len(), Block::N);
+    }
+    ret
+};
+
+#[static_init::dynamic]
+static INTERSECTING_LINES: BlockIndexedSlice<Vec<Line>> = {
+    const EMPTY_VEC: Vec<Line> = Vec::new(); // Workaround for array initialization
+    let mut ret = BlockIndexedSlice::from_slice([EMPTY_VEC; Block::N]);
+    for block in Block::iter() {
+        for line in Line::iter() {
+            if !(block.members_bitset() & line.members_bitset()).is_empty() {
+                ret[block].push(line);
+            }
+        }
+        assert_eq!(ret[block].len(), 6); // 3 Rows, 3 Cols
     }
     ret
 };

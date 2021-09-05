@@ -1,5 +1,5 @@
 use crate::{
-    solver::{solve, SolveOpts, SolveResult},
+    solver::{solve, SolveOpts, SolveResult, Row, Col, Block},
     Pos, Sudoku,
 };
 use rand::{
@@ -17,7 +17,7 @@ impl Default for GenerateOpts<'_> {
     #[inline]
     fn default() -> Self {
         Self {
-            solve_opts: SolveOpts::fast(),
+            solve_opts: Default::default(),
             rng: Box::new(thread_rng())
         }
     }
@@ -35,26 +35,11 @@ fn fill_initial_chunk(sudoku: &mut Sudoku, rng: &mut dyn RngCore, positions: &[P
 // The initial chunks can be filled without backtracking, see "Optimization" in
 // https://dlbeer.co.nz/articles/sudoku.html
 fn fill_initial_chunks(sudoku: &mut Sudoku, rng: &mut dyn RngCore) {
-    // FIXME - get these with better constants
-
-    fill_initial_chunk(sudoku, rng, &[
-        Pos::row_col(0, 0), Pos::row_col(0, 1), Pos::row_col(0, 2),
-        Pos::row_col(1, 0), Pos::row_col(1, 1), Pos::row_col(1, 2),
-        Pos::row_col(2, 0), Pos::row_col(2, 1), Pos::row_col(2, 2),
-    ]);
-
-    fill_initial_chunk(sudoku, rng, &[
-        Pos::row_col(3, 0), Pos::row_col(4, 0), Pos::row_col(5, 0),
-        Pos::row_col(6, 0), Pos::row_col(7, 0), Pos::row_col(8, 0),
-    ]);
-
-    fill_initial_chunk(sudoku, rng, &[
-        Pos::row_col(0, 3), Pos::row_col(0, 4), Pos::row_col(0, 5),
-        Pos::row_col(0, 6), Pos::row_col(0, 7), Pos::row_col(0, 8),
-    ]);
-
+    fill_initial_chunk(sudoku, rng, &Block::new(0).members_iter().collect::<Vec<_>>());
+    fill_initial_chunk(sudoku, rng, &Row::new(0).members_iter().skip(3).collect::<Vec<_>>());
+    fill_initial_chunk(sudoku, rng, &Col::new(0).members_iter().skip(3).collect::<Vec<_>>());
     // I don't understand how to pick the right candidates for the remaining part of the top band
-    // without backtracking, the above link doesn't really explain it well, so just leave it there.
+    // without backtracking, the above link doesn't really explain it either...
 }
 
 fn random_guess_and_check_to_fill(sudoku: Sudoku, rng: &mut dyn RngCore) -> Option<Sudoku> {
