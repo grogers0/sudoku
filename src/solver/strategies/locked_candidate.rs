@@ -23,7 +23,7 @@ pub(crate) fn locked_candidate(sudoku: &Sudoku) -> Option<StrategyResult> {
                 {
                     return Some(StrategyResult::LockedCandidate {
                         value: val,
-                        exclusions: line_candidates.difference(intersection_candidates).iter().collect(),
+                        excluded_positions: line_candidates.difference(intersection_candidates).iter().collect(),
                         positions: intersection_candidates.iter().collect(),
                         block, line,
                         pointing: true
@@ -36,7 +36,7 @@ pub(crate) fn locked_candidate(sudoku: &Sudoku) -> Option<StrategyResult> {
                 {
                     return Some(StrategyResult::LockedCandidate {
                         value: val,
-                        exclusions: block_candidates.difference(intersection_candidates).iter().collect(),
+                        excluded_positions: block_candidates.difference(intersection_candidates).iter().collect(),
                         positions: intersection_candidates.iter().collect(),
                         block, line,
                         pointing: false
@@ -66,7 +66,7 @@ mod tests {
     fn test_pointing_example1() {
         check_example("1.....863.6.13..9..3...6.....1.6....2.35.....6..3127453..25...1.1..432..82..71...",
             Some(StrategyResult::LockedCandidate {
-                value: Value::new(7), exclusions: vec![Pos::new(47)],
+                value: Value::new(7), excluded_positions: vec![Pos::new(47)],
                 positions: vec![Pos::new(11), Pos::new(20)], block: Block::new(0), line: Line::new(11),
                 pointing: true
             }));
@@ -76,7 +76,7 @@ mod tests {
     fn test_claiming_example1() {
         check_example(".1...584.4.81.6.....2..8..12976814..865..91721..7529683..8...1...9.1..8.781.63..4",
             Some(StrategyResult::LockedCandidate {
-                value: Value::new(1), exclusions: vec![Pos::new(13)],
+                value: Value::new(1), excluded_positions: vec![Pos::new(13)],
                 positions: vec![Pos::new(3), Pos::new(4)], block: Block::new(1), line: Line::new(0),
                 pointing: false
             }));

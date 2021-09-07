@@ -130,6 +130,17 @@ macro_rules! impl_type_indexed_slice {
             }
         }
 
+        impl <T: std::fmt::Debug> std::fmt::Debug for $SliceName<T> {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "[")?;
+                for i in 0 .. <$IndexType>::N {
+                    if i > 0 { write!(f, ", ")? }
+                    write!(f, "{:?}", self.0[i])?;
+                }
+                write!(f, "]")
+            }
+        }
+
         impl <T: PartialEq> PartialEq for $SliceName<T> {
             #[inline]
             fn eq(&self, other: &Self) -> bool {
@@ -169,7 +180,7 @@ macro_rules! impl_type_indexed_slice {
 /// Use the [`impl_index_type!`] macro to generate the boilerplate.
 macro_rules! impl_type_indexed_bitset {
     ($BitSetName:ident, $IndexType:ty, $UintType:ty, $IterName:ident, $Visibility:vis) => {
-        #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+        #[derive(Copy, Clone, PartialEq, Eq)]
         $Visibility struct $BitSetName($UintType);
 
         impl $BitSetName {
@@ -275,6 +286,12 @@ macro_rules! impl_type_indexed_bitset {
             #[inline]
             fn bitor_assign(&mut self, other: Self) {
                 *self = self.union(other);
+            }
+        }
+
+        impl std::fmt::Debug for $BitSetName {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{:#x}", self.0)
             }
         }
 

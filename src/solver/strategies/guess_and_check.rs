@@ -6,7 +6,7 @@ use crate::{
     Pos, Sudoku,
 };
 
-pub(crate) fn guess_and_check(sudoku: &Sudoku) -> SolveResult {
+pub(crate) fn guess_and_check(sudoku: &Sudoku, mut initial_steps: Vec<StrategyResult>) -> SolveResult {
     let pos = Pos::iter()
         .filter(|&pos| sudoku.get_value(pos).is_none())
         .min_by_key(|&pos| sudoku.get_candidates_by_pos(pos).len())
@@ -15,12 +15,14 @@ pub(crate) fn guess_and_check(sudoku: &Sudoku) -> SolveResult {
     for val in sudoku.get_candidates_by_pos(pos).iter() {
         let mut sudoku2 = sudoku.clone();
         sudoku2.set_value(pos, val);
-        let mut res2 = solve(sudoku2, &SolveOpts::fast());
-        res2.steps.insert(0, StrategyResult::GuessAndCheck(pos, val));
-        res = res.merge(res2);
+        res = res.merge(solve(sudoku2, &SolveOpts::fast()));
         if let SolveSuccess::NonUnique = res.success {
-            return res
+            initial_steps.push(StrategyResult::GuessAndCheck(pos, val));
+            initial_steps.append(&mut res.steps);
+            res.steps = initial_steps;
+            return res;
         }
     }
+    res.steps = initial_steps;
     res
 }

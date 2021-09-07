@@ -1,9 +1,10 @@
 use crate::{
     solver::{
         strategies::{
-            self, Strategy, StrategyResult,
+            self, Strategy, StrategyResult, KnownSubsets,
         },
-        PosBitSet,
+        house::HouseIndexedSlice,
+        House,
     },
     Sudoku,
 };
@@ -81,15 +82,23 @@ impl SolveResult {
 }
 
 fn run_strategies(sudoku: &Sudoku, opts: &SolveOpts) -> Option<StrategyResult> {
-    let mut naked_subset_positions = PosBitSet::NONE;
+    struct TmpSolveState {
+        known_subsets: HouseIndexedSlice<KnownSubsets>
+    }
+    let mut tmp_solve_state = TmpSolveState {
+        known_subsets: HouseIndexedSlice::from_slice([Default::default(); House::N])
+    };
     for strat in opts.strategies {
         let res = match strat {
-            Strategy::NakedSingle => strategies::naked_single(&sudoku),
+            Strategy::HiddenPair => strategies::hidden_pair(&sudoku, &mut tmp_solve_state.known_subsets),
+            Strategy::HiddenQuadruple => strategies::hidden_quadruple(&sudoku, &mut tmp_solve_state.known_subsets),
             Strategy::HiddenSingle => strategies::hidden_single(&sudoku),
+            Strategy::HiddenTriple => strategies::hidden_triple(&sudoku, &mut tmp_solve_state.known_subsets),
             Strategy::LockedCandidate => strategies::locked_candidate(&sudoku),
-            Strategy::NakedPair => strategies::naked_pair(&sudoku, &mut naked_subset_positions),
-            Strategy::NakedTriple => strategies::naked_triple(&sudoku, &mut naked_subset_positions),
-            Strategy::NakedQuad => strategies::naked_quad(&sudoku, &mut naked_subset_positions)
+            Strategy::NakedPair => strategies::naked_pair(&sudoku, &mut tmp_solve_state.known_subsets),
+            Strategy::NakedQuadruple => strategies::naked_quadruple(&sudoku, &mut tmp_solve_state.known_subsets),
+            Strategy::NakedSingle => strategies::naked_single(&sudoku),
+            Strategy::NakedTriple => strategies::naked_triple(&sudoku, &mut tmp_solve_state.known_subsets),
         };
         if res.is_some() { return res }
     }
@@ -102,13 +111,13 @@ pub fn solve(mut sudoku: Sudoku, opts: &SolveOpts) -> SolveResult {
         match run_strategies(&sudoku, &opts) {
             None => break, // No further progress unless we guess and check
             Some(res) => {
-                steps.push(res.clone());
                 for (pos, val) in res.candidates_to_remove() {
                     sudoku.remove_candidate(pos, val);
                 }
                 for (pos, val) in res.candidates_to_set() {
                     sudoku.set_value(pos, val);
                 }
+                steps.push(res);
             }
         }
     }
@@ -117,7 +126,7 @@ pub fn solve(mut sudoku: Sudoku, opts: &SolveOpts) -> SolveResult {
         return SolveResult { success: SolveSuccess::Unique, sudoku, steps }
     }
     if opts.guess_and_check && sudoku.progress_possible() {
-        return strategies::guess_and_check(&sudoku);
+        return strategies::guess_and_check(&sudoku, steps);
     }
     SolveResult { success: SolveSuccess::Unsolvable, sudoku, steps }
 }

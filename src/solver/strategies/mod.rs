@@ -1,28 +1,33 @@
 use crate::{
+    solver::{Line, House, Block, PosBitSet, ValueBitSet},
     Pos, Value,
-    solver::{Line, House, Block},
 };
 
 mod guess_and_check;
 mod hidden_single;
+mod hidden_subset;
 mod locked_candidate;
 mod naked_single;
 mod naked_subset;
 
 pub(crate) use guess_and_check::guess_and_check;
 pub(crate) use hidden_single::hidden_single;
+pub(crate) use hidden_subset::{hidden_pair, hidden_triple, hidden_quadruple};
 pub(crate) use locked_candidate::locked_candidate;
 pub(crate) use naked_single::naked_single;
-pub(crate) use naked_subset::{naked_pair, naked_triple, naked_quad};
+pub(crate) use naked_subset::{naked_pair, naked_triple, naked_quadruple};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum Strategy {
-    NakedSingle,
-    NakedPair,
-    NakedTriple,
-    NakedQuad,
+    HiddenPair,
+    HiddenQuadruple,
     HiddenSingle,
+    HiddenTriple,
     LockedCandidate,
+    NakedPair,
+    NakedQuadruple,
+    NakedSingle,
+    NakedTriple,
 }
 
 // TODO - benchmark and figure out which is the fastest order and which are worthwhile
@@ -32,7 +37,10 @@ pub const FAST: &'static [Strategy] = &[
     Strategy::LockedCandidate,
     Strategy::NakedPair,
     Strategy::NakedTriple,
-    Strategy::NakedQuad,
+    Strategy::NakedQuadruple,
+    //Strategy::HiddenPair,
+    //Strategy::HiddenTriple,
+    //Strategy::HiddenQuadruple,
 ];
 
 pub const ALL: &'static [Strategy] = &[
@@ -41,7 +49,10 @@ pub const ALL: &'static [Strategy] = &[
     Strategy::LockedCandidate,
     Strategy::NakedPair,
     Strategy::NakedTriple,
-    Strategy::NakedQuad,
+    Strategy::NakedQuadruple,
+    Strategy::HiddenPair,
+    Strategy::HiddenTriple,
+    Strategy::HiddenQuadruple,
 ];
 
 // TODO - return a description of how we decided on the result?
@@ -52,7 +63,7 @@ pub(crate) enum StrategyResult {
     GuessAndCheck(Pos, Value),
     LockedCandidate {
         value: Value,
-        exclusions: Vec<Pos>,
+        excluded_positions: Vec<Pos>,
         /// Positions of the locked candidates
         positions: Vec<Pos>,
         block: Block,
@@ -62,10 +73,17 @@ pub(crate) enum StrategyResult {
         pointing: bool
     },
     NakedSubset {
-        exclusions: Vec<(Pos, Value)>,
+        excluded_candidates: Vec<(Pos, Value)>,
         /// Positions of the cells in the subset
         positions: Vec<Pos>,
         values: Vec<Value>
+    },
+    HiddenSubset {
+        excluded_candidates: Vec<(Pos, Value)>,
+        /// Positions of the cells in the subset
+        positions: Vec<Pos>,
+        values: Vec<Value>,
+        house: House
     }
 }
 
@@ -75,8 +93,10 @@ impl StrategyResult {
             StrategyResult::NakedSingle(_, _) => Vec::new(),
             StrategyResult::HiddenSingle(_, _, _) => Vec::new(),
             StrategyResult::GuessAndCheck(_, _) => Vec::new(),
-            StrategyResult::LockedCandidate { value, exclusions, .. } => exclusions.iter().map(|pos| (*pos, *value)).collect(),
-            StrategyResult::NakedSubset { exclusions, .. } => exclusions.clone()
+            StrategyResult::LockedCandidate { value, excluded_positions, .. } =>
+                excluded_positions.iter().map(|pos| (*pos, *value)).collect(),
+            StrategyResult::NakedSubset { excluded_candidates, .. } => excluded_candidates.clone(),
+            StrategyResult::HiddenSubset { excluded_candidates, .. } => excluded_candidates.clone()
         }
     }
 
@@ -86,6 +106,25 @@ impl StrategyResult {
             StrategyResult::HiddenSingle(pos, val, _) => vec![(*pos, *val)],
             StrategyResult::GuessAndCheck(_, _) => Vec::new(), // Handled separately when solving, not as a normal strategy
             _ => Vec::new()
+        }
+    }
+}
+
+/// A naked subset in some house also means there can't be a higher-order naked subset with any of
+/// the same positions in that house, or a hidden subset with any of the locked values (and vice
+/// versa). By keeping track of these known subsets, we skip searching those locations on
+/// subsequent passes.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) struct KnownSubsets {
+    naked: PosBitSet,
+    hidden: ValueBitSet
+}
+
+impl Default for KnownSubsets {
+    fn default() -> Self {
+        Self {
+            naked: PosBitSet::NONE,
+            hidden: ValueBitSet::NONE
         }
     }
 }

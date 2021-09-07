@@ -17,7 +17,7 @@ impl Default for GenerateOpts<'_> {
     #[inline]
     fn default() -> Self {
         Self {
-            solve_opts: Default::default(),
+            solve_opts: SolveOpts::fast(),
             rng: Box::new(thread_rng())
         }
     }

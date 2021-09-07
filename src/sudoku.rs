@@ -55,7 +55,7 @@ impl Sudoku {
         for val in Value::iter() {
             candidates |= self.get_candidates_by_value(val);
         }
-        candidates != PosBitSet::NONE
+        !candidates.is_empty()
     }
 
     pub fn is_solved(&self) -> bool {
