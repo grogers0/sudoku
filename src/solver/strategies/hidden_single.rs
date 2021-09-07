@@ -19,3 +19,35 @@ pub(crate) fn hidden_single(sudoku: &Sudoku) -> Option<StrategyResult> {
     }
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        Pos,
+    };
+
+    fn check_example(sudoku_line: &str, expected_res: Option<StrategyResult>) {
+        let sudoku = Sudoku::from_line(sudoku_line).unwrap();
+        let res = hidden_single(&sudoku);
+        assert_eq!(res, expected_res);
+    }
+
+    #[test]
+    fn test_block_example1() {
+        check_example("47..8........5...4.2..6.3...8.5.....1...9..6....7....121....85.9......13.48......",
+            Some(StrategyResult::HiddenSingle(Pos::new(69), Value::new(3), House::new(26))));
+    }
+
+    #[test]
+    fn test_row_example1() {
+        check_example("5...18.......6.9....7...14.62.8....1....2......9...42..1.3.9............84.57.6.9",
+            Some(StrategyResult::HiddenSingle(Pos::new(56), Value::new(5), House::new(6))));
+    }
+
+    #[test]
+    fn test_col_example1() {
+        check_example("....53..2.....9..863.........716...........9.25...7..47..3.8.5..4.5.612.5..2.....",
+            Some(StrategyResult::HiddenSingle(Pos::new(48), Value::new(8), House::new(12))));
+    }
+}

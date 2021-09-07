@@ -2,7 +2,6 @@ use crate::{
     Pos, Value,
     solver::{Line, House, Block},
 };
-use std::ops::RangeInclusive;
 
 mod guess_and_check;
 mod hidden_single;
@@ -14,14 +13,16 @@ pub(crate) use guess_and_check::guess_and_check;
 pub(crate) use hidden_single::hidden_single;
 pub(crate) use locked_candidate::locked_candidate;
 pub(crate) use naked_single::naked_single;
-pub(crate) use naked_subset::naked_subset;
+pub(crate) use naked_subset::{naked_pair, naked_triple, naked_quad};
 
 #[derive(Debug, Clone)]
 pub enum Strategy {
     NakedSingle,
+    NakedPair,
+    NakedTriple,
+    NakedQuad,
     HiddenSingle,
     LockedCandidate,
-    NakedSubset(RangeInclusive<usize>) // Which subset sizes to use, e.g. 2..=2 is pairs only, 2..=4 is everything
 }
 
 // TODO - benchmark and figure out which is the fastest order and which are worthwhile
@@ -29,14 +30,18 @@ pub const FAST: &'static [Strategy] = &[
     Strategy::NakedSingle,
     Strategy::HiddenSingle,
     Strategy::LockedCandidate,
-    Strategy::NakedSubset(2..=4),
+    Strategy::NakedPair,
+    Strategy::NakedTriple,
+    Strategy::NakedQuad,
 ];
 
 pub const ALL: &'static [Strategy] = &[
     Strategy::NakedSingle,
     Strategy::HiddenSingle,
     Strategy::LockedCandidate,
-    Strategy::NakedSubset(2..=4),
+    Strategy::NakedPair,
+    Strategy::NakedTriple,
+    Strategy::NakedQuad,
 ];
 
 // TODO - return a description of how we decided on the result?
@@ -60,8 +65,7 @@ pub(crate) enum StrategyResult {
         exclusions: Vec<(Pos, Value)>,
         /// Positions of the cells in the subset
         positions: Vec<Pos>,
-        values: Vec<Value>,
-        house: House
+        values: Vec<Value>
     }
 }
 

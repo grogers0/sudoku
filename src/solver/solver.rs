@@ -1,6 +1,9 @@
 use crate::{
-    solver::strategies::{
-        self, Strategy, StrategyResult,
+    solver::{
+        strategies::{
+            self, Strategy, StrategyResult,
+        },
+        PosBitSet,
     },
     Sudoku,
 };
@@ -78,12 +81,15 @@ impl SolveResult {
 }
 
 fn run_strategies(sudoku: &Sudoku, opts: &SolveOpts) -> Option<StrategyResult> {
+    let mut naked_subset_positions = PosBitSet::NONE;
     for strat in opts.strategies {
         let res = match strat {
             Strategy::NakedSingle => strategies::naked_single(&sudoku),
             Strategy::HiddenSingle => strategies::hidden_single(&sudoku),
             Strategy::LockedCandidate => strategies::locked_candidate(&sudoku),
-            Strategy::NakedSubset(siz) => strategies::naked_subset(&sudoku, siz)
+            Strategy::NakedPair => strategies::naked_pair(&sudoku, &mut naked_subset_positions),
+            Strategy::NakedTriple => strategies::naked_triple(&sudoku, &mut naked_subset_positions),
+            Strategy::NakedQuad => strategies::naked_quad(&sudoku, &mut naked_subset_positions)
         };
         if res.is_some() { return res }
     }
