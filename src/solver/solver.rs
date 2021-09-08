@@ -99,6 +99,9 @@ fn run_strategies(sudoku: &Sudoku, opts: &SolveOpts) -> Option<StrategyResult> {
             Strategy::NakedQuadruple => strategies::naked_quadruple(&sudoku, &mut tmp_solve_state.known_subsets),
             Strategy::NakedSingle => strategies::naked_single(&sudoku),
             Strategy::NakedTriple => strategies::naked_triple(&sudoku, &mut tmp_solve_state.known_subsets),
+            Strategy::WxyzWing => strategies::wxyz_wing(&sudoku),
+            Strategy::XyWing => strategies::xy_wing(&sudoku),
+            Strategy::XyzWing => strategies::xyz_wing(&sudoku),
         };
         if res.is_some() { return res }
     }

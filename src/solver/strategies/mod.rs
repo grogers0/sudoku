@@ -9,6 +9,7 @@ mod hidden_subset;
 mod locked_candidate;
 mod naked_single;
 mod naked_subset;
+mod wings;
 
 pub(crate) use guess_and_check::guess_and_check;
 pub(crate) use hidden_single::hidden_single;
@@ -16,6 +17,7 @@ pub(crate) use hidden_subset::{hidden_pair, hidden_triple, hidden_quadruple};
 pub(crate) use locked_candidate::locked_candidate;
 pub(crate) use naked_single::naked_single;
 pub(crate) use naked_subset::{naked_pair, naked_triple, naked_quadruple};
+pub(crate) use wings::{xy_wing, xyz_wing, wxyz_wing};
 
 #[derive(Debug, Copy, Clone)]
 pub enum Strategy {
@@ -28,6 +30,9 @@ pub enum Strategy {
     NakedQuadruple,
     NakedSingle,
     NakedTriple,
+    XyWing,
+    XyzWing,
+    WxyzWing,
 }
 
 // TODO - benchmark and figure out which is the fastest order and which are worthwhile
@@ -38,9 +43,6 @@ pub const FAST: &'static [Strategy] = &[
     Strategy::NakedPair,
     Strategy::NakedTriple,
     Strategy::NakedQuadruple,
-    //Strategy::HiddenPair,
-    //Strategy::HiddenTriple,
-    //Strategy::HiddenQuadruple,
 ];
 
 pub const ALL: &'static [Strategy] = &[
@@ -48,11 +50,14 @@ pub const ALL: &'static [Strategy] = &[
     Strategy::HiddenSingle,
     Strategy::LockedCandidate,
     Strategy::NakedPair,
-    Strategy::NakedTriple,
-    Strategy::NakedQuadruple,
     Strategy::HiddenPair,
+    Strategy::NakedTriple,
     Strategy::HiddenTriple,
+    Strategy::NakedQuadruple,
     Strategy::HiddenQuadruple,
+    Strategy::XyWing,
+    Strategy::XyzWing,
+    Strategy::WxyzWing,
 ];
 
 // TODO - return a description of how we decided on the result?
@@ -84,7 +89,28 @@ pub(crate) enum StrategyResult {
         positions: Vec<Pos>,
         values: Vec<Value>,
         house: House
-    }
+    },
+    XyWing {
+        excluded_candidates: Vec<(Pos, Value)>,
+        /// Positions as [xy, xz, yz]
+        positions: [Pos; 3],
+        /// Values as [x, y, z]
+        values: [Value; 3]
+    },
+    XyzWing {
+        excluded_candidates: Vec<(Pos, Value)>,
+        /// Positions as [xyz, xz, yz]
+        positions: [Pos; 3],
+        /// Values as [x, y, z]
+        values: [Value; 3]
+    },
+    WxyzWing {
+        excluded_candidates: Vec<(Pos, Value)>,
+        /// Positions as [wxy(z), wz, xz, yz]
+        positions: [Pos; 4],
+        /// Values as [w, x, y, z]
+        values: [Value; 4]
+    },
 }
 
 impl StrategyResult {
@@ -96,7 +122,10 @@ impl StrategyResult {
             StrategyResult::LockedCandidate { value, excluded_positions, .. } =>
                 excluded_positions.iter().map(|pos| (*pos, *value)).collect(),
             StrategyResult::NakedSubset { excluded_candidates, .. } => excluded_candidates.clone(),
-            StrategyResult::HiddenSubset { excluded_candidates, .. } => excluded_candidates.clone()
+            StrategyResult::HiddenSubset { excluded_candidates, .. } => excluded_candidates.clone(),
+            StrategyResult::XyWing { excluded_candidates, .. } => excluded_candidates.clone(),
+            StrategyResult::XyzWing { excluded_candidates, .. } => excluded_candidates.clone(),
+            StrategyResult::WxyzWing { excluded_candidates, .. } => excluded_candidates.clone(),
         }
     }
 

@@ -114,7 +114,6 @@ mod tests {
         let sudoku = Sudoku::from_line(sudoku_line).unwrap();
         let mut known_subsets = HouseIndexedSlice::from_slice([Default::default(); House::N]);
         let res = f(&sudoku, &mut known_subsets);
-        println!("{:?}", sudoku);
         assert_eq!(res, expected_res);
     }
 

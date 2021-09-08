@@ -51,7 +51,7 @@ impl Pos {
     }
 
     #[inline]
-    pub(crate) fn neighbors_iter(&self) -> impl Iterator<Item = Pos> {
+    pub(crate) fn neighbors_iter(&self) -> impl Iterator<Item = Pos> + Clone {
         NEIGHBOR_VECS[*self].iter().cloned()
     }
 
