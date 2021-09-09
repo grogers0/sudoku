@@ -140,15 +140,10 @@ pub(crate) fn wxyz_wing(sudoku: &Sudoku) -> Option<StrategyResult> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Value;
-
-    fn check_example(f: fn(&Sudoku) -> Option<StrategyResult>,
-        sudoku_line: &str, expected_res: Option<StrategyResult>)
-    {
-        let sudoku = Sudoku::from_line(sudoku_line).unwrap();
-        let res = f(&sudoku);
-        assert_eq!(res, expected_res);
-    }
+    use crate::{
+        solver::tests::check_example,
+        Value,
+    };
 
     #[test]
     fn test_xy_wing_example1() {

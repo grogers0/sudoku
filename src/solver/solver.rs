@@ -1,12 +1,12 @@
 use crate::{
     solver::{
         strategies::{
-            self, Strategy, StrategyResult, KnownSubsets,
+            self, Coloring, Strategy, StrategyResult, KnownSubsets,
         },
         house::HouseIndexedSlice,
-        House,
+        House, ValueIndexedSlice,
     },
-    Sudoku,
+    Sudoku, Value,
 };
 
 pub struct SolveOpts<'a> {
@@ -83,10 +83,13 @@ impl SolveResult {
 
 fn run_strategies(sudoku: &Sudoku, opts: &SolveOpts) -> Option<StrategyResult> {
     struct TmpSolveState {
-        known_subsets: HouseIndexedSlice<KnownSubsets>
+        known_subsets: HouseIndexedSlice<KnownSubsets>,
+        colorings: ValueIndexedSlice<Option<Coloring>>
     }
+    const NONE_COLORING: Option<Coloring> = None;
     let mut tmp_solve_state = TmpSolveState {
-        known_subsets: HouseIndexedSlice::from_slice([Default::default(); House::N])
+        known_subsets: HouseIndexedSlice::from_slice([Default::default(); House::N]),
+        colorings: ValueIndexedSlice::from_slice([NONE_COLORING; Value::N]),
     };
     for strat in opts.strategies {
         let res = match strat {
@@ -95,10 +98,12 @@ fn run_strategies(sudoku: &Sudoku, opts: &SolveOpts) -> Option<StrategyResult> {
             Strategy::HiddenSingle => strategies::hidden_single(&sudoku),
             Strategy::HiddenTriple => strategies::hidden_triple(&sudoku, &mut tmp_solve_state.known_subsets),
             Strategy::LockedCandidate => strategies::locked_candidate(&sudoku),
+            Strategy::MultiColor(max_color_pairs) => strategies::multi_color(&sudoku, *max_color_pairs, &mut tmp_solve_state.colorings),
             Strategy::NakedPair => strategies::naked_pair(&sudoku, &mut tmp_solve_state.known_subsets),
             Strategy::NakedQuadruple => strategies::naked_quadruple(&sudoku, &mut tmp_solve_state.known_subsets),
             Strategy::NakedSingle => strategies::naked_single(&sudoku),
             Strategy::NakedTriple => strategies::naked_triple(&sudoku, &mut tmp_solve_state.known_subsets),
+            Strategy::SimpleColor => strategies::simple_color(&sudoku, &mut tmp_solve_state.colorings),
             Strategy::WxyzWing => strategies::wxyz_wing(&sudoku),
             Strategy::XyWing => strategies::xy_wing(&sudoku),
             Strategy::XyzWing => strategies::xyz_wing(&sudoku),

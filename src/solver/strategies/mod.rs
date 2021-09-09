@@ -3,6 +3,7 @@ use crate::{
     Pos, Value,
 };
 
+mod coloring;
 mod guess_and_check;
 mod hidden_single;
 mod hidden_subset;
@@ -11,6 +12,7 @@ mod naked_single;
 mod naked_subset;
 mod wings;
 
+pub(crate) use coloring::{multi_color, simple_color, Coloring};
 pub(crate) use guess_and_check::guess_and_check;
 pub(crate) use hidden_single::hidden_single;
 pub(crate) use hidden_subset::{hidden_pair, hidden_triple, hidden_quadruple};
@@ -30,6 +32,9 @@ pub enum Strategy {
     NakedQuadruple,
     NakedSingle,
     NakedTriple,
+    /// The maximum number of pairs of colors to allow in the chain
+    MultiColor(usize),
+    SimpleColor,
     XyWing,
     XyzWing,
     WxyzWing,
@@ -58,9 +63,10 @@ pub const ALL: &'static [Strategy] = &[
     Strategy::XyWing,
     Strategy::XyzWing,
     Strategy::WxyzWing,
+    Strategy::SimpleColor,
+    Strategy::MultiColor(usize::MAX),
 ];
 
-// TODO - return a description of how we decided on the result?
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum StrategyResult {
     NakedSingle(Pos, Value),
@@ -111,6 +117,20 @@ pub(crate) enum StrategyResult {
         /// Values as [w, x, y, z]
         values: [Value; 4]
     },
+    SimpleColor {
+        excluded_candidates: Vec<(Pos, Value)>,
+        value: Value,
+        /// The positions of each color (for color wrap, the eliminated color is first)
+        color_positions: [Vec<Pos>; 2],
+        /// A "color wrap" is where a color sees itself, otherwise it is a "color trap" where a
+        /// candidate sees both pairs of colors
+        color_wrap: bool
+    },
+    MultiColor {
+        excluded_candidates: Vec<(Pos, Value)>,
+        value: Value,
+        color_positions: Vec<[Vec<Pos>; 2]>
+    },
 }
 
 impl StrategyResult {
@@ -126,6 +146,8 @@ impl StrategyResult {
             StrategyResult::XyWing { excluded_candidates, .. } => excluded_candidates.clone(),
             StrategyResult::XyzWing { excluded_candidates, .. } => excluded_candidates.clone(),
             StrategyResult::WxyzWing { excluded_candidates, .. } => excluded_candidates.clone(),
+            StrategyResult::SimpleColor { excluded_candidates, .. } => excluded_candidates.clone(),
+            StrategyResult::MultiColor { excluded_candidates, .. } => excluded_candidates.clone(),
         }
     }
 
