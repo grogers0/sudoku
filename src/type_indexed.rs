@@ -180,7 +180,7 @@ macro_rules! impl_type_indexed_slice {
 /// Use the [`impl_index_type!`] macro to generate the boilerplate.
 macro_rules! impl_type_indexed_bitset {
     ($BitSetName:ident, $IndexType:ty, $UintType:ty, $IterName:ident, $Visibility:vis) => {
-        #[derive(Copy, Clone, PartialEq, Eq)]
+        #[derive(Copy, Clone, PartialEq, Eq, Hash)]
         $Visibility struct $BitSetName($UintType);
 
         impl $BitSetName {

@@ -10,6 +10,7 @@ mod hidden_subset;
 mod locked_candidate;
 mod naked_single;
 mod naked_subset;
+mod pattern_overlay;
 mod wings;
 
 pub(crate) use coloring::{multi_color, simple_color, Coloring};
