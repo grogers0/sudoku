@@ -53,7 +53,7 @@ mod tests {
     use super::*;
     use crate::{
         solver::{
-            tests::check_example,
+            tests::{check_example, check_pattern_overlay_equivalence},
             Line,
         },
         Pos,
@@ -61,24 +61,26 @@ mod tests {
 
     #[test]
     fn test_pointing_example1() {
-        check_example(locked_candidate,
-            "1.....863.6.13..9..3...6.....1.6....2.35.....6..3127453..25...1.1..432..82..71...",
-            Some(StrategyResult::LockedCandidate {
-                value: Value::new(7), excluded_positions: vec![Pos::new(47)],
-                positions: vec![Pos::new(11), Pos::new(20)], block: Block::new(0), line: Line::new(11),
-                pointing: true
-            }));
+        let line = "1.....863.6.13..9..3...6.....1.6....2.35.....6..3127453..25...1.1..432..82..71...";
+        let step_res = StrategyResult::LockedCandidate {
+            value: Value::new(7), excluded_positions: vec![Pos::new(47)],
+            positions: vec![Pos::new(11), Pos::new(20)], block: Block::new(0), line: Line::new(11),
+            pointing: true,
+        };
+        check_example(locked_candidate, line, Some(step_res.clone()));
+        check_pattern_overlay_equivalence(&Sudoku::from_line(line).unwrap(), Value::new(7), step_res);
     }
 
     #[test]
     fn test_claiming_example1() {
-        check_example(locked_candidate,
-            ".1...584.4.81.6.....2..8..12976814..865..91721..7529683..8...1...9.1..8.781.63..4",
-            Some(StrategyResult::LockedCandidate {
-                value: Value::new(1), excluded_positions: vec![Pos::new(13)],
-                positions: vec![Pos::new(3), Pos::new(4)], block: Block::new(1), line: Line::new(0),
-                pointing: false
-            }));
+        let line = ".1...584.4.81.6.....2..8..12976814..865..91721..7529683..8...1...9.1..8.781.63..4";
+        let step_res = StrategyResult::LockedCandidate {
+            value: Value::new(1), excluded_positions: vec![Pos::new(13)],
+            positions: vec![Pos::new(3), Pos::new(4)], block: Block::new(1), line: Line::new(0),
+            pointing: false
+        };
+        check_example(locked_candidate, line, Some(step_res.clone()));
+        check_pattern_overlay_equivalence(&Sudoku::from_line(line).unwrap(), Value::new(1), step_res);
     }
 
 }

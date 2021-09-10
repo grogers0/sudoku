@@ -10,6 +10,7 @@ mod hidden_subset;
 mod locked_candidate;
 mod naked_single;
 mod naked_subset;
+mod pattern_overlay;
 mod wings;
 
 pub(crate) use coloring::{multi_color, simple_color, Coloring};
@@ -19,9 +20,13 @@ pub(crate) use hidden_subset::{hidden_pair, hidden_triple, hidden_quadruple};
 pub(crate) use locked_candidate::locked_candidate;
 pub(crate) use naked_single::naked_single;
 pub(crate) use naked_subset::{naked_pair, naked_triple, naked_quadruple};
+pub(crate) use pattern_overlay::pattern_overlay;
 pub(crate) use wings::{xy_wing, xyz_wing, wxyz_wing};
 
-#[derive(Debug, Copy, Clone)]
+#[cfg(test)]
+pub(crate) use pattern_overlay::pattern_overlay_for_value;
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Strategy {
     HiddenPair,
     HiddenQuadruple,
@@ -34,6 +39,7 @@ pub enum Strategy {
     NakedTriple,
     /// The maximum number of pairs of colors to allow in the chain
     MultiColor(usize),
+    PatternOverlay,
     SimpleColor,
     XyWing,
     XyzWing,
@@ -65,6 +71,7 @@ pub const ALL: &'static [Strategy] = &[
     Strategy::WxyzWing,
     Strategy::SimpleColor,
     Strategy::MultiColor(usize::MAX),
+    Strategy::PatternOverlay,
 ];
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -131,10 +138,16 @@ pub(crate) enum StrategyResult {
         value: Value,
         color_positions: Vec<[Vec<Pos>; 2]>
     },
+    PatternOverlay {
+        excluded_candidates: Vec<(Pos, Value)>,
+        required_candidates: Vec<(Pos, Value)>,
+        value: Value,
+        remaining_patterns: usize
+    },
 }
 
 impl StrategyResult {
-    pub(crate) fn candidates_to_remove(&self) -> Vec<(Pos, Value)> {
+    pub(crate) fn excluded_candidates(&self) -> Vec<(Pos, Value)> {
         match self {
             StrategyResult::NakedSingle(_, _) => Vec::new(),
             StrategyResult::HiddenSingle(_, _, _) => Vec::new(),
@@ -148,13 +161,15 @@ impl StrategyResult {
             StrategyResult::WxyzWing { excluded_candidates, .. } => excluded_candidates.clone(),
             StrategyResult::SimpleColor { excluded_candidates, .. } => excluded_candidates.clone(),
             StrategyResult::MultiColor { excluded_candidates, .. } => excluded_candidates.clone(),
+            StrategyResult::PatternOverlay { excluded_candidates, .. } => excluded_candidates.clone(),
         }
     }
 
-    pub(crate) fn candidates_to_set(&self) -> Vec<(Pos, Value)> {
+    pub(crate) fn required_candidates(&self) -> Vec<(Pos, Value)> {
         match self {
             StrategyResult::NakedSingle(pos, val) => vec![(*pos, *val)],
             StrategyResult::HiddenSingle(pos, val, _) => vec![(*pos, *val)],
+            StrategyResult::PatternOverlay { required_candidates, .. } => required_candidates.clone(),
             StrategyResult::GuessAndCheck(_, _) => Vec::new(), // Handled separately when solving, not as a normal strategy
             _ => Vec::new()
         }

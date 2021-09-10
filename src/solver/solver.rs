@@ -13,14 +13,17 @@ pub struct SolveOpts<'a> {
     /// Strategies to try when solving, in order
     pub strategies: &'a [Strategy],
     /// If sudoku is unsolvable with given strategies, should we guess and check to solve it
-    pub guess_and_check: bool
+    pub guess_and_check: bool,
+    /// Stop trying to solve further after the first step is made
+    pub stop_after_first_step: bool,
 }
 
 impl Default for SolveOpts<'_> {
     fn default() -> Self {
         Self {
             strategies: &strategies::ALL,
-            guess_and_check: true
+            guess_and_check: true,
+            stop_after_first_step: false,
         }
     }
 }
@@ -29,7 +32,8 @@ impl SolveOpts<'_> {
     pub fn fast() -> Self {
         Self {
             strategies: &strategies::FAST,
-            guess_and_check: true
+            guess_and_check: true,
+            stop_after_first_step: false,
         }
     }
 }
@@ -103,6 +107,7 @@ fn run_strategies(sudoku: &Sudoku, opts: &SolveOpts) -> Option<StrategyResult> {
             Strategy::NakedQuadruple => strategies::naked_quadruple(&sudoku, &mut tmp_solve_state.known_subsets),
             Strategy::NakedSingle => strategies::naked_single(&sudoku),
             Strategy::NakedTriple => strategies::naked_triple(&sudoku, &mut tmp_solve_state.known_subsets),
+            Strategy::PatternOverlay => strategies::pattern_overlay(&sudoku),
             Strategy::SimpleColor => strategies::simple_color(&sudoku, &mut tmp_solve_state.colorings),
             Strategy::WxyzWing => strategies::wxyz_wing(&sudoku),
             Strategy::XyWing => strategies::xy_wing(&sudoku),
@@ -119,13 +124,14 @@ pub fn solve(mut sudoku: Sudoku, opts: &SolveOpts) -> SolveResult {
         match run_strategies(&sudoku, &opts) {
             None => break, // No further progress unless we guess and check
             Some(res) => {
-                for (pos, val) in res.candidates_to_remove() {
+                for (pos, val) in res.excluded_candidates() {
                     sudoku.remove_candidate(pos, val);
                 }
-                for (pos, val) in res.candidates_to_set() {
+                for (pos, val) in res.required_candidates() {
                     sudoku.set_value(pos, val);
                 }
                 steps.push(res);
+                if opts.stop_after_first_step { break }
             }
         }
     }
@@ -133,7 +139,9 @@ pub fn solve(mut sudoku: Sudoku, opts: &SolveOpts) -> SolveResult {
     if sudoku.is_solved() {
         return SolveResult { success: SolveSuccess::Unique, sudoku, steps }
     }
-    if opts.guess_and_check && sudoku.progress_possible() {
+    if opts.guess_and_check && sudoku.progress_possible() &&
+        (!opts.stop_after_first_step || steps.is_empty())
+    {
         return strategies::guess_and_check(&sudoku, steps);
     }
     SolveResult { success: SolveSuccess::Unsolvable, sudoku, steps }
@@ -147,9 +155,17 @@ mod tests {
     fn test_solve_unique() {
         let line = "4...3.......6..8..........1....5..9..8....6...7.2........1.27..5.3....4.9........";
         let sudoku = Sudoku::from_line(line).unwrap();
-        let solve_res = solve(sudoku, &Default::default());
+        let solve_res = solve(sudoku, &SolveOpts::fast());
         let expected_sudoku = Sudoku::from_line("468931527751624839392578461134756298289413675675289314846192753513867942927345186").unwrap();
         assert!(matches!(solve_res.success, SolveSuccess::Unique));
         assert_eq!(solve_res.sudoku, expected_sudoku);
+    }
+
+    #[test]
+    fn test_solve_non_unique() {
+        let line = ".................................................................................";
+        let sudoku = Sudoku::from_line(line).unwrap();
+        let solve_res = solve(sudoku, &SolveOpts::fast());
+        assert!(matches!(solve_res.success, SolveSuccess::NonUnique));
     }
 }

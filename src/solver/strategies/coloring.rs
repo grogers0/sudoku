@@ -277,6 +277,7 @@ pub(crate) fn multi_color(sudoku: &Sudoku, max_color_pairs: usize, colorings: &m
 mod tests {
     use super::*;
     use crate::Pos;
+    use crate::solver::tests::check_pattern_overlay_equivalence;
 
     fn check_simple_color_example(sudoku_line: &str, expected_res: Option<StrategyResult>) {
         let sudoku = Sudoku::from_line(sudoku_line).unwrap();
@@ -288,35 +289,37 @@ mod tests {
 
     #[test]
     fn test_color_wrap_example1() {
-        check_simple_color_example(
-            "97864253161.753.8.3.589167.453169827297.8516.186.27...56127439883.9167..7.9538.16",
-            Some(StrategyResult::SimpleColor {
-                excluded_candidates: vec![
-                    (Pos::new(11), Value::new(1)), (Pos::new(15), Value::new(1)), (Pos::new(26), Value::new(1)),
-                    (Pos::new(71), Value::new(1)), (Pos::new(73), Value::new(1))
-                ],
-                value: Value::new(1),
-                color_positions: [
-                    vec![Pos::new(11), Pos::new(15), Pos::new(26), Pos::new(71), Pos::new(73)],
-                    vec![Pos::new(19), Pos::new(65), Pos::new(78)]
-                ],
-                color_wrap: true
-            }));
+        let line = "97864253161.753.8.3.589167.453169827297.8516.186.27...56127439883.9167..7.9538.16";
+        let step_res = StrategyResult::SimpleColor {
+            excluded_candidates: vec![
+                (Pos::new(11), Value::new(1)), (Pos::new(15), Value::new(1)), (Pos::new(26), Value::new(1)),
+                (Pos::new(71), Value::new(1)), (Pos::new(73), Value::new(1))
+            ],
+            value: Value::new(1),
+            color_positions: [
+                vec![Pos::new(11), Pos::new(15), Pos::new(26), Pos::new(71), Pos::new(73)],
+                vec![Pos::new(19), Pos::new(65), Pos::new(78)]
+            ],
+            color_wrap: true
+        };
+        check_simple_color_example(line, Some(step_res.clone()));
+        check_pattern_overlay_equivalence(&Sudoku::from_line(line).unwrap(), Value::new(1), step_res);
     }
 
     #[test]
     fn test_color_trap_example1() {
-        check_simple_color_example(
-            ".973.84.64..69.387683...95.9.683.57473...68.9.489..63.37428916586...4293..9.63748",
-            Some(StrategyResult::SimpleColor {
-                excluded_candidates: vec![(Pos::new(45), Value::new(4))],
-                value: Value::new(4),
-                color_positions: [
-                    vec![Pos::new(0), Pos::new(14)],
-                    vec![Pos::new(4), Pos::new(50)]
-                ],
-                color_wrap: false
-            }));
+        let line = ".973.84.64..69.387683...95.9.683.57473...68.9.489..63.37428916586...4293..9.63748";
+        let step_res = StrategyResult::SimpleColor {
+            excluded_candidates: vec![(Pos::new(45), Value::new(4))],
+            value: Value::new(4),
+            color_positions: [
+                vec![Pos::new(0), Pos::new(14)],
+                vec![Pos::new(4), Pos::new(50)]
+            ],
+            color_wrap: false
+        };
+        check_simple_color_example(line, Some(step_res.clone()));
+        check_pattern_overlay_equivalence(&Sudoku::from_line(line).unwrap(), Value::new(4), step_res);
     }
 
     fn check_multi_color_example(max_color_pairs: usize, sudoku_line: &str, expected_res: Option<StrategyResult>) {
@@ -329,67 +332,70 @@ mod tests {
 
     #[test]
     fn test_multi_color_example1() {
-        check_multi_color_example(usize::MAX,
-            "751496328.24..19.7...27.4...7...2.4.182647593.4.91.7.24.576.2.929...467...7.29..4",
-            Some(StrategyResult::MultiColor {
-                excluded_candidates: vec![(Pos::new(30), Value::new(4))],
-                value: Value::new(4),
-                color_positions: vec![
-                    [
-                        vec![Pos::new(27), Pos::new(50)],
-                        vec![Pos::new(23), Pos::new(45)],
-                    ], [
-                        vec![Pos::new(26), Pos::new(79)],
-                        vec![Pos::new(71), Pos::new(75)],
-                    ],
+        let line = "751496328.24..19.7...27.4...7...2.4.182647593.4.91.7.24.576.2.929...467...7.29..4";
+        let step_res = StrategyResult::MultiColor {
+            excluded_candidates: vec![(Pos::new(30), Value::new(4))],
+            value: Value::new(4),
+            color_positions: vec![
+                [
+                    vec![Pos::new(27), Pos::new(50)],
+                    vec![Pos::new(23), Pos::new(45)],
+                ], [
+                    vec![Pos::new(26), Pos::new(79)],
+                    vec![Pos::new(71), Pos::new(75)],
                 ],
-            }))
+            ],
+        };
+        check_multi_color_example(usize::MAX, line, Some(step_res.clone()));
+        check_pattern_overlay_equivalence(&Sudoku::from_line(line).unwrap(), Value::new(4), step_res);
     }
 
     #[test]
     fn test_multi_color_example2() {
         // All of the color is excluded
-        check_multi_color_example(usize::MAX,
-            "157248639283697...6..531728...48..13..8123..731.75.8.....374.8.8.19623.5.3.815..6",
-            Some(StrategyResult::MultiColor {
-                excluded_candidates: vec![
-                    (Pos::new(33), Value::new(1)), (Pos::new(47), Value::new(1)), (Pos::new(62), Value::new(1))
+        let line = "157248639283697...6..531728...48..13..8123..731.75.8.....374.8.8.19623.5.3.815..6";
+        let step_res = StrategyResult::MultiColor {
+            excluded_candidates: vec![
+                (Pos::new(33), Value::new(1)), (Pos::new(47), Value::new(1)), (Pos::new(62), Value::new(1))
+            ],
+            value: Value::new(1),
+            color_positions: vec![
+                [
+                    vec![Pos::new(53)],
+                    vec![Pos::new(33), Pos::new(47), Pos::new(62)]
+                ], [
+                vec![Pos::new(74)],
+                vec![Pos::new(78)],
                 ],
-                value: Value::new(1),
-                color_positions: vec![
-                    [
-                        vec![Pos::new(53)],
-                        vec![Pos::new(33), Pos::new(47), Pos::new(62)]
-                    ], [
-                        vec![Pos::new(74)],
-                        vec![Pos::new(78)],
-                    ],
-                ],
-            }));
+            ],
+        };
+        check_multi_color_example(usize::MAX, line, Some(step_res.clone()));
+        check_pattern_overlay_equivalence(&Sudoku::from_line(line).unwrap(), Value::new(1), step_res);
     }
 
     #[test]
     fn test_multi_color_example3() {
-        let sudoku_line = "71.....69.924.7.1...5....2727...5.4.1.387.295.5..2..71531...784427581936986743152";
-        check_multi_color_example(usize::MAX, sudoku_line,
-            Some(StrategyResult::MultiColor {
-                excluded_candidates: vec![(Pos::new(21), Value::new(2))],
-                value: Value::new(2),
-                color_positions: vec![
-                    [
-                        vec![Pos::new(48)],
-                        vec![Pos::new(51)],
-                    ], [
-                        vec![Pos::new(35)],
-                        vec![Pos::new(17)],
-                    ], [
-                        vec![Pos::new(9)],
-                        vec![Pos::new(18)],
-                    ],
+        let line = "71.....69.924.7.1...5....2727...5.4.1.387.295.5..2..71531...784427581936986743152";
+        let step_res = StrategyResult::MultiColor {
+            excluded_candidates: vec![(Pos::new(21), Value::new(2))],
+            value: Value::new(2),
+            color_positions: vec![
+                [
+                    vec![Pos::new(48)],
+                    vec![Pos::new(51)],
+                ], [
+                    vec![Pos::new(35)],
+                    vec![Pos::new(17)],
+                ], [
+                    vec![Pos::new(9)],
+                    vec![Pos::new(18)],
                 ],
-            }));
-
+            ],
+        };
+        check_multi_color_example(usize::MAX, line, Some(step_res.clone()));
         // Max chain length is respected
-        check_multi_color_example(2, sudoku_line, None);
+        check_multi_color_example(2, line, None);
+
+        check_pattern_overlay_equivalence(&Sudoku::from_line(line).unwrap(), Value::new(2), step_res);
     }
 }
